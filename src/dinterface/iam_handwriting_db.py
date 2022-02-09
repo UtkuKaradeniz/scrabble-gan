@@ -34,7 +34,7 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
         listOfFiles += [os.path.join(dirpath, file) for file in filenames]
 
     # (2)get file transcriptions (stored in words.txt)
-    transcription_file = input_dir.rstrip('/') + '.txt'
+    transcription_file = input_dir.rstrip('img\\') + '\\gt\\words.txt'
     transcriptions = {}
 
     with open(transcription_file, 'r', encoding="utf8") as fi:

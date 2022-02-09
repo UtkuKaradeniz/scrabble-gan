@@ -1,0 +1,8 @@
+data/*
+src/__pycache__/*
+src/bigacgan/__pycache__/*
+src/dinterface/__pycache__/*
+.idea
+src/dinterface/iam_handwriting_db.py
+src/scrabble_gan.gin
+src/scrabble_gan.gin

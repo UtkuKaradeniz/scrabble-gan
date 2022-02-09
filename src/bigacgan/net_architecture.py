@@ -77,8 +77,8 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
         model.summary()
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
-        tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-                                  to_file=gen_path + 'Recognizer.png')
+        # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
+        #                           to_file=gen_path + 'Recognizer.png')
 
     return model
 
@@ -171,7 +171,7 @@ def make_generator(latent_dim, input_dim, embed_y, gen_path, kernel_reg, blocks_
         model.summary()
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
-        tf.keras.utils.plot_model(model, show_shapes=True, to_file=gen_path + 'Generator.png')
+        # tf.keras.utils.plot_model(model, show_shapes=True, to_file=gen_path + 'Generator.png')
     return model
 
 
@@ -231,8 +231,8 @@ def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, v
         model.summary()
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
-        tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-                                  to_file=gen_path + 'Discriminator.png')
+        # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
+        #                           to_file=gen_path + 'Discriminator.png')
 
     return model
 
@@ -266,8 +266,8 @@ def make_gan(g_model, d_model, r_model, gen_path, vis_model=True):
         model.summary()
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
-        tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-                                  to_file=gen_path + 'ScrabbleGAN.png')
+        # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
+        #                           to_file=gen_path + 'ScrabbleGAN.png')
 
     return model
 
