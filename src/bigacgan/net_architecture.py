@@ -97,7 +97,7 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
 
     h, w, c = input_dim
 
-    # w = None
+    w = None
     # define input layer
     inp_imgs = layers.Input(shape=(h, w, c), name='input_images')
 
@@ -113,31 +113,39 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
     lrelu_2 = layers.LeakyReLU(alpha=0.01)(bnorm_2)
     pool_2 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_2)
     # ============================================= 3rd layer ==============================================#
-    drop_1 = layers.Dropout(rate=0.2)(pool_2)
-    conv_3 = layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_1)
+    drop_2 = layers.Dropout(rate=0.2)(pool_2)
+    conv_3 = layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_2)
     bnorm_3 = layers.BatchNormalization()(conv_3)
     lrelu_3 = layers.LeakyReLU(alpha=0.01)(bnorm_3)
     pool_3 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_3)
     # ============================================= 4th layer ==============================================#
-    drop_2 = layers.Dropout(rate=0.2)(pool_3)
-    conv_4 = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_2)
+    drop_3 = layers.Dropout(rate=0.2)(pool_3)
+    conv_4 = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_3)
     bnorm_4 = layers.BatchNormalization()(conv_4)
     lrelu_4 = layers.LeakyReLU(alpha=0.01)(bnorm_4)
+    pool_4 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_4)
     # ============================================= 5th layer ==============================================#
-    drop_3 = layers.Dropout(rate=0.2)(lrelu_4)
-    conv_5 = layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_3)
+    drop_4 = layers.Dropout(rate=0.2)(pool_4)
+    conv_5 = layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_4)
     bnorm_5 = layers.BatchNormalization()(conv_5)
     lrelu_5 = layers.LeakyReLU(alpha=0.01)(bnorm_5)
+    pool_5 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_5)
     # ============================================= 6th layer ==============================================#
-
-    # pool_4 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_5)
-    # conv_7 = layers.Conv2D(filters=512, kernel_size=2, activation='relu', padding='valid', strides=1)(lrelu_6)
+    drop_5 = layers.Dropout(rate=0.2)(pool_5)
+    conv_6 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_5)
+    bnorm_6 = layers.BatchNormalization()(conv_6)
+    lrelu_6 = layers.LeakyReLU(alpha=0.01)(bnorm_6)
+    # ============================================= 7th layer ==============================================#
+    drop_6 = layers.Dropout(rate=0.2)(lrelu_6)
+    conv_7 = layers.Conv2D(filters=144, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_6)
+    bnorm_7 = layers.BatchNormalization()(conv_7)
+    lrelu_7 = layers.LeakyReLU(alpha=0.01)(bnorm_7)
     # ============================================= RNN Layers ==============================================#
-    shape = lrelu_5.shape
-    print(shape)
+    shape = lrelu_7.shape
+
     # (None, 1, X, 512) -> (None, X, 512)
-    # blstm = layers.Lambda(lambda x: tf.keras.backend.squeeze(x, 1))(pool_4)
-    blstm = layers.Reshape((shape[1], shape[2] * shape[3]))(lrelu_5)
+    blstm = layers.Lambda(lambda x: tf.keras.backend.squeeze(x, 1))(lrelu_7)
+    # blstm = layers.Reshape((shape[1], shape[2] * shape[3]))(lrelu_5)
 
     blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
     blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
@@ -170,7 +178,6 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
 
     if vis_model:
         model.summary()
-        exit(-1)
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
