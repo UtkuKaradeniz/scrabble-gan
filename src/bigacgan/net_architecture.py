@@ -117,19 +117,19 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
     conv_3 = layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_2)
     bnorm_3 = layers.BatchNormalization()(conv_3)
     lrelu_3 = layers.LeakyReLU(alpha=0.01)(bnorm_3)
-    pool_3 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 2), padding='valid')(lrelu_3)
+    pool_3 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(lrelu_3)
     # ============================================= 4th layer ==============================================#
     drop_3 = layers.Dropout(rate=0.2)(pool_3)
     conv_4 = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_3)
     bnorm_4 = layers.BatchNormalization()(conv_4)
     lrelu_4 = layers.LeakyReLU(alpha=0.01)(bnorm_4)
-    pool_4 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 2), padding='valid')(lrelu_4)
+    pool_4 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(lrelu_4)
     # ============================================= 5th layer ==============================================#
     drop_4 = layers.Dropout(rate=0.2)(pool_4)
     conv_5 = layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_4)
     bnorm_5 = layers.BatchNormalization()(conv_5)
     lrelu_5 = layers.LeakyReLU(alpha=0.01)(bnorm_5)
-    pool_5 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 2), padding='valid')(lrelu_5)
+    pool_5 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(lrelu_5)
     # ============================================= 6th layer ==============================================#
     drop_5 = layers.Dropout(rate=0.2)(pool_5)
     conv_6 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_5)
