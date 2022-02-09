@@ -6,6 +6,83 @@ from src.bigacgan.arch_ops import NonLocalBlock, SpatialEmbedding
 from src.bigacgan.resnet_ops import ResNetBlockUp, ResNetBlockDown
 
 
+# def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_model=True):
+#     """
+#     Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
+#
+#     :param input_dim:
+#     :param sequence_length:
+#     :param output_classes:
+#     :param gen_path:
+#     :param vis_model:
+#     :return:
+#     """
+#
+#     h, w, c = input_dim
+#     w = None
+#     # define input layer
+#     inp_imgs = layers.Input(shape=(h, w, c), name='input_images')
+#
+#     # Convolutional Layers
+#     # ============================================= 1st layer ==============================================#
+#     conv_1 = layers.Conv2D(filters=64, kernel_size=3, activation='relu', padding='same', strides=1)(inp_imgs)
+#     pool_1 = layers.MaxPool2D(pool_size=(2, 2))(conv_1)
+#     # ============================================= 2nd layer ==============================================#
+#     conv_2 = layers.Conv2D(filters=128, kernel_size=3, activation='relu', padding='same', strides=1)(pool_1)
+#     pool_2 = layers.MaxPool2D(pool_size=(2, 2))(conv_2)
+#     # ============================================= 3rd layer ==============================================#
+#     conv_3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same', strides=1)(pool_2)
+#     # ============================================= 4th layer ==============================================#
+#     conv_4 = layers.Conv2D(256, (3, 3), activation='relu', padding='same', strides=1)(conv_3)
+#     # "In the 3rd and the 4th max-pooling layers, we adopt 1x2 sized rectangular pooling windows instead"
+#     pool_4 = layers.MaxPool2D(pool_size=(2, 1))(conv_4)
+#     # ============================================= 5th layer ==============================================#
+#     conv_5 = layers.Conv2D(filters=512, kernel_size=3, activation='relu', padding='same', strides=1)(pool_4)
+#     # "two batch normalization layers are inserted after the 5th and 6th convolutional layers respectively."
+#     batch_norm_5 = layers.BatchNormalization()(conv_5)
+#     # ============================================= 6th layer ==============================================#
+#     conv_6 = layers.Conv2D(filters=512, kernel_size=3, activation='relu', padding='same', strides=1)(
+#         batch_norm_5)
+#     batch_norm_6 = layers.BatchNormalization()(conv_6)
+#     pool_6 = layers.MaxPool2D(pool_size=(2, 1))(batch_norm_6)
+#     # ============================================= 7th layer ==============================================#
+#     conv_7 = layers.Conv2D(filters=512, kernel_size=2, activation='relu', padding='valid', strides=1)(pool_6)
+#     # ========================================== Map-to-Sequence ===========================================#
+#     # (None, 1, X, 512) -> (None, X, 512)
+#     map_to_seq = layers.Lambda(lambda x: tf.keras.backend.squeeze(x, 1))(conv_7)
+#
+#     # Per frame predictions (skip RNN layers -> avoid learning implicit language model)
+#     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(map_to_seq)
+#
+#     def ctc_loss(args):
+#         """
+#         to better understand the meaning of the params:
+#         https://www.tensorflow.org/api_docs/python/tf/keras/backend/ctc_batch_cost?version=stable
+#         :return:
+#         """
+#         y_true, y_pred, input_length, label_length = args
+#         return tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
+#
+#     labels = layers.Input(name='y_true', shape=[sequence_length], dtype='float32')
+#     input_length = layers.Input(shape=[1], dtype=tf.int32, name='input_length')
+#     label_length = layers.Input(name='label_length', shape=[1], dtype=tf.int32)
+#
+#     # ========================================== Transcription layer ===================================#
+#     loss_out = tf.keras.layers.Lambda(ctc_loss, output_shape=(1,), name='ctc')(
+#         [labels, per_frame_predictions, input_length, label_length])
+#
+#     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
+#
+#     if vis_model:
+#         model.summary()
+#         if not os.path.exists(gen_path):
+#             os.makedirs(gen_path)
+#         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
+#         #                           to_file=gen_path + 'Recognizer.png')
+#
+#     return model
+
+
 def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_model=True):
     """
     Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
@@ -19,40 +96,58 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
     """
 
     h, w, c = input_dim
-    w = None
+
+    # w = None
     # define input layer
     inp_imgs = layers.Input(shape=(h, w, c), name='input_images')
 
     # Convolutional Layers
     # ============================================= 1st layer ==============================================#
-    conv_1 = layers.Conv2D(filters=64, kernel_size=3, activation='relu', padding='same', strides=1)(inp_imgs)
-    pool_1 = layers.MaxPool2D(pool_size=(2, 2))(conv_1)
+    conv_1 = layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(1, 1), padding='same')(inp_imgs)
+    bnorm_1 = layers.BatchNormalization()(conv_1)
+    lrelu_1 = layers.LeakyReLU(alpha=0.01)(bnorm_1)
+    pool_1 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_1)
     # ============================================= 2nd layer ==============================================#
-    conv_2 = layers.Conv2D(filters=128, kernel_size=3, activation='relu', padding='same', strides=1)(pool_1)
-    pool_2 = layers.MaxPool2D(pool_size=(2, 2))(conv_2)
+    conv_2 = layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same')(pool_1)
+    bnorm_2 = layers.BatchNormalization()(conv_2)
+    lrelu_2 = layers.LeakyReLU(alpha=0.01)(bnorm_2)
+    pool_2 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_2)
     # ============================================= 3rd layer ==============================================#
-    conv_3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same', strides=1)(pool_2)
+    drop_1 = layers.Dropout(rate=0.2)(pool_2)
+    conv_3 = layers.Conv2D(filters=48, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_1)
+    bnorm_3 = layers.BatchNormalization()(conv_3)
+    lrelu_3 = layers.LeakyReLU(alpha=0.01)(bnorm_3)
+    pool_3 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_3)
     # ============================================= 4th layer ==============================================#
-    conv_4 = layers.Conv2D(256, (3, 3), activation='relu', padding='same', strides=1)(conv_3)
-    # "In the 3rd and the 4th max-pooling layers, we adopt 1x2 sized rectangular pooling windows instead"
-    pool_4 = layers.MaxPool2D(pool_size=(2, 1))(conv_4)
+    drop_2 = layers.Dropout(rate=0.2)(pool_3)
+    conv_4 = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_2)
+    bnorm_4 = layers.BatchNormalization()(conv_4)
+    lrelu_4 = layers.LeakyReLU(alpha=0.01)(bnorm_4)
     # ============================================= 5th layer ==============================================#
-    conv_5 = layers.Conv2D(filters=512, kernel_size=3, activation='relu', padding='same', strides=1)(pool_4)
-    # "two batch normalization layers are inserted after the 5th and 6th convolutional layers respectively."
-    batch_norm_5 = layers.BatchNormalization()(conv_5)
+    drop_3 = layers.Dropout(rate=0.2)(lrelu_4)
+    conv_5 = layers.Conv2D(filters=80, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_3)
+    bnorm_5 = layers.BatchNormalization()(conv_5)
+    lrelu_5 = layers.LeakyReLU(alpha=0.01)(bnorm_5)
     # ============================================= 6th layer ==============================================#
-    conv_6 = layers.Conv2D(filters=512, kernel_size=3, activation='relu', padding='same', strides=1)(
-        batch_norm_5)
-    batch_norm_6 = layers.BatchNormalization()(conv_6)
-    pool_6 = layers.MaxPool2D(pool_size=(2, 1))(batch_norm_6)
-    # ============================================= 7th layer ==============================================#
-    conv_7 = layers.Conv2D(filters=512, kernel_size=2, activation='relu', padding='valid', strides=1)(pool_6)
-    # ========================================== Map-to-Sequence ===========================================#
+
+    # pool_4 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(lrelu_5)
+    # conv_7 = layers.Conv2D(filters=512, kernel_size=2, activation='relu', padding='valid', strides=1)(lrelu_6)
+    # ============================================= RNN Layers ==============================================#
+    shape = lrelu_5.shape
+    print(shape)
     # (None, 1, X, 512) -> (None, X, 512)
-    map_to_seq = layers.Lambda(lambda x: tf.keras.backend.squeeze(x, 1))(conv_7)
+    # blstm = layers.Lambda(lambda x: tf.keras.backend.squeeze(x, 1))(pool_4)
+    blstm = layers.Reshape((shape[1], shape[2] * shape[3]))(lrelu_5)
+
+    blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
+    blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
 
     # Per frame predictions (skip RNN layers -> avoid learning implicit language model)
-    per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(map_to_seq)
+    blstm = layers.Dropout(rate=0.5)(blstm)
+    per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(blstm)
 
     def ctc_loss(args):
         """
@@ -75,12 +170,14 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
 
     if vis_model:
         model.summary()
+        exit(-1)
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
         #                           to_file=gen_path + 'Recognizer.png')
 
     return model
+
 
 
 def make_generator(latent_dim, input_dim, embed_y, gen_path, kernel_reg, blocks_with_attention, vocab_size,
