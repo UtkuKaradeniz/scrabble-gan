@@ -1,5 +1,5 @@
-# import sys
-# sys.path.extend(['/home/ubuntu/workspace/scrabble-gan'])
+import sys
+sys.path.extend(['/home/ubuntu/workspace/scrabble-gan'])
 
 import os
 import random

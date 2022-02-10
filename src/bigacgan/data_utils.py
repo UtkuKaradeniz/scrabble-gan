@@ -362,7 +362,7 @@ def write_to_csv(row, gen_path, gradient_balance):
                 headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
                            'g_loss', 'r_loss_fake', 'alpha', 'g_loss_std', 'r_loss_fake_std', 'r_loss_balanced']
                 writer.writerow(headers)
-            writer.writerows(row)
+            writer.writerow(row)
     else:
         with open(os.path.join(gen_path + '/batch_summary.csv'), "a", newline="") as f:
             writer = csv.writer(f)
