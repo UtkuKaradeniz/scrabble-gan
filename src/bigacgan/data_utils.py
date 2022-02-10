@@ -244,12 +244,14 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         generator_optimizer.apply_gradients(zip(gradients_of_generator, composite_gan.trainable_variables))
 
     if apply_gradient_balance:
-        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean, d_loss_mean, d_loss_real_mean, d_loss_fake_mean,
-                      g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean, alpha,  g_loss_std, r_loss_fake_std,
-                      tf.reduce_mean(r_loss_balanced)], gen_path, gradient_balance=apply_gradient_balance)
+        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
+                      d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy(),
+                      alpha.numpy(),  g_loss_std.numpy(), r_loss_fake_std.numpy(),
+                      tf.reduce_mean(r_loss_balanced).numpy()], gen_path, gradient_balance=apply_gradient_balance)
     else:
-        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean, d_loss_mean, d_loss_real_mean, d_loss_fake_mean,
-                      g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean], gen_path, gradient_balance=apply_gradient_balance)
+        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
+                      d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy()],
+                     gen_path, gradient_balance=apply_gradient_balance)
 
 
 def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
