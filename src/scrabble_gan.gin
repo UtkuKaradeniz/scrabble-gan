@@ -9,9 +9,10 @@ setup_optimizer.beta_1 = 0.0
 setup_optimizer.beta_2 = 0.999
 setup_optimizer.loss_fn = @hinge                #@not_saturating       #@hinge
 setup_optimizer.disc_iters=1                    #2
+setup_optimizer.apply_gradient_balance=0        #1
 
 # Shared specs (G and D)
-shared_specs.epochs = 100
+shared_specs.epochs = 15
 shared_specs.batch_size = 32
 shared_specs.latent_dim = 128
 shared_specs.embed_y = (32, 8192)
@@ -21,17 +22,17 @@ shared_specs.g_bw_attention = 'B3'              #'B_skip'
 shared_specs.d_bw_attention = 'B1'              #'B_skip'
 
 # I/O and data structure
-io.base_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan'
-io.checkpoint_dir = '\\data\\scrabble-gan-checkpoints\\'
-io.gen_imgs_dir = '\\data\\output\\'
-io.model_dir = '\\data\\scrabble-gan-model\\'
+io.base_path = '/scrabble-gan/'
+io.checkpoint_dir = '/data/scrabble-gan-checkpoints/'
+io.gen_imgs_dir = '/data/output/ex99/'
+io.model_dir = '/data/scrabble-gan-model/'
 
 # Dataset
 io.input_dim = (32, 160, 1)
-io.buf_size = 8037
+io.buf_size = 80377
 io.n_classes = 52
 io.seq_len = None
 io.bucket_size = 10
-io.raw_dir = '\\data\\IAM_mygan\\img\\'
-io.read_dir = '\\data\\IAM_mygan\\words-Reading\\'
+io.raw_dir = '/data/IAM_mygan/img/'
+io.read_dir = '/data/IAM_mygan/words-Reading/'
 io.char_vec = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
