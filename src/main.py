@@ -89,7 +89,11 @@ def main():
     labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(num_gen)], np.int32)
 
     # start training
-    train(train_dataset, generator, discriminator, recognizer, gan, checkpoint, checkpoint_prefix, generator_optimizer,
+    # train(train_dataset, generator, discriminator, recognizer, gan, checkpoint, checkpoint_prefix, generator_optimizer,
+    #       discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
+    #       latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
+    #
+    train(train_dataset, generator, discriminator, recognizer, gan, -1, -1, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
 

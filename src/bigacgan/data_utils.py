@@ -131,7 +131,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 
             train_step(epoch_idx, batch_idx, batch_per_epoch, image_batch, label_batch, discriminator, recognizer,
                        composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size,
-                       latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size)
+                       latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path)
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
@@ -154,7 +154,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 # @tf.function
 def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discriminator, recognizer, composite_gan,
                generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn,
-               disc_iters, apply_gradient_balance, random_words, bucket_size):
+               disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path):
     """
     Single training loop
 
@@ -246,10 +246,10 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     if apply_gradient_balance:
         write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean, d_loss_mean, d_loss_real_mean, d_loss_fake_mean,
                       g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean, alpha,  g_loss_std, r_loss_fake_std,
-                      tf.reduce_mean(r_loss_balanced)], gradient_balance=apply_gradient_balance)
+                      tf.reduce_mean(r_loss_balanced)], gen_path, gradient_balance=apply_gradient_balance)
     else:
         write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean, d_loss_mean, d_loss_real_mean, d_loss_fake_mean,
-                      g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean], gradient_balance=apply_gradient_balance)
+                      g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean], gen_path, gradient_balance=apply_gradient_balance)
 
 
 def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
@@ -353,10 +353,10 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     return random_words
 
 
-def write_to_csv(row, gradient_balance):
+def write_to_csv(row, gen_path, gradient_balance):
     import csv
     if gradient_balance:
-        with open("batch_summary.csv", "a", newline="") as f:
+        with open(os.path.join(gen_path + '/batch_summary.csv'), "a", newline="") as f:
             writer = csv.writer(f)
             if row[0] == 1 and row[1] == 1:
                 headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
@@ -364,7 +364,7 @@ def write_to_csv(row, gradient_balance):
                 writer.writerow(headers)
             writer.writerows(row)
     else:
-        with open("batch_summary.csv", "a", newline="") as f:
+        with open(os.path.join(gen_path + '/batch_summary.csv'), "a", newline="") as f:
             writer = csv.writer(f)
             if row[0] == 1 and row[1] == 1:
                 headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
