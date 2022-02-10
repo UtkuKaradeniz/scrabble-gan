@@ -86,7 +86,8 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
 
 def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix,
           generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, buffer_size, batch_size,
-          epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, random_words, bucket_size, char_vector):
+          epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words,
+          bucket_size, char_vector):
     """
     Whole training procedure
 
@@ -114,8 +115,12 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     :param char_vector:                 valid vocabulary represented as array of chars/ string
     :return:
     """
-
     batch_per_epoch = int(buffer_size / batch_size) + 1
+
+    print('no. training samples: ', buffer_size)
+    print('batch size:           ', batch_size)
+    print('no. batch_per_epoch:  ', batch_per_epoch)
+    print('epoch size:           ', epochs)
 
     print('training...')
     for epoch_idx in range(epochs):
@@ -126,22 +131,22 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 
             train_step(epoch_idx, batch_idx, batch_per_epoch, image_batch, label_batch, discriminator, recognizer,
                        composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size,
-                       latent_dim, loss_fn, disc_iters, random_words, bucket_size)
+                       latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size)
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
 
-        # Save the model every 5 epochs
-        if (epoch_idx + 1) % 5 == 0:
-            checkpoint.save(file_prefix=checkpoint_prefix)
+        # # Save the model every 5 epochs
+        # if (epoch_idx + 1) % 5 == 0:
+        #     checkpoint.save(file_prefix=checkpoint_prefix)
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
-    # save generator model
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
-
-    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
+    # # save generator model
+    # if not os.path.exists(model_path):
+    #     os.makedirs(model_path)
+    #
+    # generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 
 # Notice the use of `tf.function`
@@ -149,7 +154,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 # @tf.function
 def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discriminator, recognizer, composite_gan,
                generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn,
-               disc_iters, random_words, bucket_size):
+               disc_iters, apply_gradient_balance, random_words, bucket_size):
     """
     Single training loop
 
@@ -203,8 +208,10 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         d_loss, d_loss_real, d_loss_fake, g_loss = loss_fn(d_real_logits, d_fake_logits)
 
         # apply gradient balancing (optional)
-        g_loss_balanced = g_loss + r_fake_logits
-        # g_loss_balanced = apply_gradient_balancing(r_fake_logits, g_loss, alpha=1)
+        if apply_gradient_balance:
+            g_loss_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std = apply_gradient_balancing(r_fake_logits, g_loss, alpha=1)
+        else:
+            g_loss_balanced = g_loss + r_fake_logits
 
         # compute stats
         r_loss_fake_mean = tf.reduce_mean(r_fake_logits)
@@ -236,6 +243,14 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         gradients_of_generator = gen_tape.gradient(g_loss_balanced, composite_gan.trainable_variables)
         generator_optimizer.apply_gradients(zip(gradients_of_generator, composite_gan.trainable_variables))
 
+    if apply_gradient_balance:
+        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean, d_loss_mean, d_loss_real_mean, d_loss_fake_mean,
+                      g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean, alpha,  g_loss_std, r_loss_fake_std,
+                      tf.reduce_mean(r_loss_balanced)], gradient_balance=apply_gradient_balance)
+    else:
+        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean, d_loss_mean, d_loss_real_mean, d_loss_fake_mean,
+                      g_loss_balanced_mean, g_loss_mean, r_loss_fake_mean], gradient_balance=apply_gradient_balance)
+
 
 def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
     """
@@ -246,10 +261,12 @@ def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
     :param alpha:           controls relative importance of L_R and L_D
     :return:
     """
-
+    # g_loss = - disc_fake_logits
     r_loss_fake_std = tf.math.reduce_std(r_fake_logits)
     g_loss_std = tf.math.reduce_std(g_loss)
-    return g_loss + alpha * (((g_loss_std) / (r_loss_fake_std)) * r_fake_logits)
+    r_loss_balanced = alpha * (((g_loss_std) / (r_loss_fake_std)) * r_fake_logits)
+    g_balanced = g_loss + r_loss_balanced
+    return g_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std
 
 
 def generate_and_save_images(model, epoch, test_input, gen_path, char_vector):
@@ -334,3 +351,23 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
                 random_words[bucket - 1].append([char_vector.index(char) for char in word])
 
     return random_words
+
+
+def write_to_csv(row, gradient_balance):
+    import csv
+    if gradient_balance:
+        with open("batch_summary.csv", "a", newline="") as f:
+            writer = csv.writer(f)
+            if row[0] == 1 and row[1] == 1:
+                headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
+                           'g_loss', 'r_loss_fake', 'alpha', 'g_loss_std', 'r_loss_fake_std', 'r_loss_balanced']
+                writer.writerow(headers)
+            writer.writerows(row)
+    else:
+        with open("batch_summary.csv", "a", newline="") as f:
+            writer = csv.writer(f)
+            if row[0] == 1 and row[1] == 1:
+                headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
+                           'g_loss', 'r_loss_fake']
+                writer.writerow(headers)
+            writer.writerow(row)

@@ -278,111 +278,61 @@ def make_generator(latent_dim, input_dim, embed_y, gen_path, kernel_reg, blocks_
     return model
 
 
-# def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
-#     """
-#      (fully convolutional) Discriminator based on
-#
-#     - https://arxiv.org/pdf/1809.11096.pdf and
-#     - https://github.com/google/compare_gan/blob/master/compare_gan/architectures/resnet_biggan_deep.py
-#     - https://arxiv.org/pdf/2003.10557.pdf
-#
-#     - orthogonal init     [ok]
-#     - skip connection     [ok]
-#     - project-y           here not necessary (use auxiliary classifier instead)
-#     - shared_embedding    here not necessary (use auxiliary classifier instead)
-#     - spectral norm       [ok]
-#     - self-attention      [ok]
-#
-#     :param gen_path:
-#     :param input_dim:
-#     :param kernel_reg:
-#     :param blocks_with_attention:
-#     :param vis_model:
-#     :return:
-#     """
-#
-#     h, w, c = input_dim
-#     w = None
-#     in_channels, out_channels = get_in_out_channels_disc(colors=c, resolution=h)
-#     print(out_channels)
-#     print(in_channels)
-#     num_blocks = len(in_channels)
-#     print(blocks_with_attention)
-#     x = layers.Input(shape=(h, w, c))
-#     net = x
-#
-#     # ResNetBlock "down"
-#     for block_idx in range(num_blocks):
-#         name = "B{}".format(block_idx + 1)
-#         is_last_block = block_idx == num_blocks - 1
-#         net = ResNetBlockDown(name, out_channels[block_idx], is_last_block, kernel_reg).call(net)
-#         if name in blocks_with_attention:
-#             net = NonLocalBlock(name, kernel_reg)(net)
-#
-#     # Final part
-#     net = tf.nn.relu(net)
-#     net_h = layers.GlobalAveragePooling2D()(net)
-#     out_logit = layers.Dense(units=1,
-#                              use_bias=False,
-#                              activation='linear',
-#                              kernel_regularizer=kernel_reg,
-#                              kernel_initializer=tf.initializers.orthogonal())(net_h)
-#
-#     out = out_logit
-#     # define model
-#     model = tf.keras.Model([x], [out])
-#
-#     if vis_model:
-#         model.summary()
-#         exit(-1)
-#         if not os.path.exists(gen_path):
-#             os.makedirs(gen_path)
-#         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-#         #                           to_file=gen_path + 'Discriminator.png')
-#
-#     return model
-
-
 def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
+    """
+     (fully convolutional) Discriminator based on
+
+    - https://arxiv.org/pdf/1809.11096.pdf and
+    - https://github.com/google/compare_gan/blob/master/compare_gan/architectures/resnet_biggan_deep.py
+    - https://arxiv.org/pdf/2003.10557.pdf
+
+    - orthogonal init     [ok]
+    - skip connection     [ok]
+    - project-y           here not necessary (use auxiliary classifier instead)
+    - shared_embedding    here not necessary (use auxiliary classifier instead)
+    - spectral norm       [ok]
+    - self-attention      [ok]
+
+    :param gen_path:
+    :param input_dim:
+    :param kernel_reg:
+    :param blocks_with_attention:
+    :param vis_model:
+    :return:
+    """
 
     h, w, c = input_dim
     w = None
     in_channels, out_channels = get_in_out_channels_disc(colors=c, resolution=h)
+    num_blocks = len(in_channels)
 
     x = layers.Input(shape=(h, w, c))
+    net = x
 
-    out = layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
-                        kernel_regularizer=kernel_reg, padding='same', use_bias=True)(x)
-    out = layers.BatchNormalization()(out)
-    out = layers.LeakyReLU()(out)
+    # ResNetBlock "down"
+    for block_idx in range(num_blocks):
+        name = "B{}".format(block_idx + 1)
+        is_last_block = block_idx == num_blocks - 1
+        net = ResNetBlockDown(name, out_channels[block_idx], is_last_block, kernel_reg).call(net)
+        if name in blocks_with_attention:
+            net = NonLocalBlock(name, kernel_reg)(net)
 
-    out = layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
-                        kernel_regularizer=kernel_reg, padding='same', use_bias=True)(out)
-    out = layers.BatchNormalization()(out)
-    out = layers.LeakyReLU()(out)
+    # Final part
+    net = tf.nn.relu(net)
+    net_h = layers.GlobalAveragePooling2D()(net)
+    out_logit = layers.Dense(units=1,
+                             use_bias=False,
+                             activation='linear',
+                             kernel_regularizer=kernel_reg,
+                             kernel_initializer=tf.initializers.orthogonal())(net_h)
 
-    out = NonLocalBlock("B1", kernel_reg)(out)
-
-    out = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
-                        kernel_regularizer=kernel_reg, padding='same', use_bias=True)(out)
-    out = layers.BatchNormalization()(out)
-    out = layers.LeakyReLU()(out)
-
-    out = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
-                        kernel_regularizer=kernel_reg, padding='same', use_bias=True)(out)
-    out = layers.BatchNormalization()(out)
-    out = layers.LeakyReLU()(out)
-
-    # out = layers.Flatten()(out)
-    out = layers.LeakyReLU()(out)
-    out = layers.GlobalAveragePooling2D()(out)
-    out = layers.Dense(units=1, use_bias=False, activation='linear', kernel_regularizer=kernel_reg,
-                       kernel_initializer=tf.initializers.orthogonal())(out)
-
+    out = out_logit
+    # define model
     model = tf.keras.Model([x], [out])
 
     if vis_model:
         model.summary()
+
         if not os.path.exists(gen_path):
             os.makedirs(gen_path)
         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
@@ -390,6 +340,53 @@ def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, v
 
     return model
 
+
+# def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
+#
+#     h, w, c = input_dim
+#     w = None
+#     in_channels, out_channels = get_in_out_channels_disc(colors=c, resolution=h)
+#
+#     x = layers.Input(shape=(h, w, c))
+#
+#     out = layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
+#                         kernel_regularizer=kernel_reg, padding='same', use_bias=True)(x)
+#     out = layers.BatchNormalization()(out)
+#     out = layers.LeakyReLU()(out)
+#
+#     out = layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
+#                         kernel_regularizer=kernel_reg, padding='same', use_bias=True)(out)
+#     out = layers.BatchNormalization()(out)
+#     out = layers.LeakyReLU()(out)
+#
+#     out = NonLocalBlock("B1", kernel_reg)(out)
+#
+#     out = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
+#                         kernel_regularizer=kernel_reg, padding='same', use_bias=True)(out)
+#     out = layers.BatchNormalization()(out)
+#     out = layers.LeakyReLU()(out)
+#
+#     out = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(2, 2), kernel_initializer=tf.initializers.orthogonal(),
+#                         kernel_regularizer=kernel_reg, padding='same', use_bias=True)(out)
+#     out = layers.BatchNormalization()(out)
+#     out = layers.LeakyReLU()(out)
+#
+#     # out = layers.Flatten()(out)
+#     out = layers.LeakyReLU()(out)
+#     out = layers.GlobalAveragePooling2D()(out)
+#     out = layers.Dense(units=1, use_bias=False, activation='linear', kernel_regularizer=kernel_reg,
+#                        kernel_initializer=tf.initializers.orthogonal())(out)
+#
+#     model = tf.keras.Model([x], [out])
+#
+#     if vis_model:
+#         model.summary()
+#         if not os.path.exists(gen_path):
+#             os.makedirs(gen_path)
+#         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
+#         #                           to_file=gen_path + 'Discriminator.png')
+#
+#     return model
 
 
 def make_gan(g_model, d_model, r_model, gen_path, vis_model=True):
