@@ -1,0 +1,5 @@
+nohup: ignoring input
+Traceback (most recent call last):
+  File "main.py", line 11, in <module>
+    from src.bigacgan.arch_ops import spectral_norm
+ModuleNotFoundError: No module named 'src'
