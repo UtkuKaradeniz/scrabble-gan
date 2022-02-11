@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
 from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list
-from src.bigacgan.net_architecture import make_generator, make_discriminator, make_recognizer, make_gan
+from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator, make_recognizer, make_my_recognizer, make_gan
 from src.bigacgan.net_loss import hinge, not_saturating
 
 gin.external_configurable(hinge)
@@ -31,8 +31,8 @@ def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply
 
 
 @gin.configurable('shared_specs')
-def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention):
-    return epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention
+def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention, my_rec, my_disc):
+    return epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention, my_rec, my_disc
 
 
 @gin.configurable('io')
@@ -49,7 +49,7 @@ def setup_io(base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_d
 def main():
     # init params
     gin.parse_config_file('scrabble_gan.gin')
-    epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention = get_shared_specs()
+    epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention, my_rec, my_disc = get_shared_specs()
     in_dim, buf_size, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec = setup_io()
 
     # convert IAM Handwriting dataset (words) to GAN format
@@ -65,8 +65,15 @@ def main():
 
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, gen_path, kernel_reg, g_bw_attention, n_classes)
-    discriminator = make_discriminator(gen_path, in_dim, kernel_reg, d_bw_attention)
-    recognizer = make_recognizer(in_dim, seq_len, n_classes + 1, gen_path)
+    if my_disc:
+        discriminator = make_my_discriminator(gen_path, in_dim, kernel_reg, d_bw_attention)
+    else:
+        discriminator = make_discriminator(gen_path, in_dim, kernel_reg, d_bw_attention)
+    if my_rec:
+        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1, gen_path)
+    else:
+        recognizer = make_recognizer(in_dim, seq_len, n_classes + 1, gen_path)
+
 
     # build composite model (update G through composite model)
     gan = make_gan(generator, discriminator, recognizer, gen_path)
