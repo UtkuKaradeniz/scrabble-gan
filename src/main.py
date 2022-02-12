@@ -23,10 +23,13 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 @gin.configurable
-def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply_gradient_balance):
+def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply_gradient_balance, rmsprop):
     generator_optimizer = tf.keras.optimizers.Adam(learning_rate=g_lr, beta_1=beta_1, beta_2=beta_2)
     discriminator_optimizer = tf.keras.optimizers.Adam(learning_rate=d_lr, beta_1=beta_1, beta_2=beta_2)
-    recognizer_optimizer = tf.keras.optimizers.Adam(learning_rate=r_lr, beta_1=beta_1, beta_2=beta_2)
+    if rmsprop:
+        recognizer_optimizer = tf.keras.optimizers.RMSprop(learning_rate=r_lr)
+    else:
+        recognizer_optimizer = tf.keras.optimizers.Adam(learning_rate=r_lr, beta_1=beta_1, beta_2=beta_2)
     return generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance
 
 
