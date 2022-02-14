@@ -157,9 +157,6 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, gen_path, vis
     blstm = layers.Dropout(rate=0.5)(blstm)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(blstm)
 
-    model_a = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
-    model_a.load_weights('/scrabble-gan/data/scrabble-gan-model')
-
     def ctc_loss(args):
         """
         to better understand the meaning of the params:
