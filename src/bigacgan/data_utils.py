@@ -133,19 +133,19 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     for epoch_idx in range(epochs):
         start = time.time()
 
-        d_loss_list = []
-        d_loss_real_list = []
-        d_loss_fake_list = []
-        r_loss_fake_list = []
-        r_loss_real_list = []
-        r_loss_balanced_list = []
-        g_loss_list = []
-        g_loss_added_list = []
-        g_loss_balanced_list = []
-        g_loss_final_list = []
-        r_loss_fake_stds = []
-        g_loss_stds = []
-        alphas = []
+        d_loss_total = 0.0
+        d_loss_real_total = 0.0
+        d_loss_fake_total = 0.0
+        r_loss_fake_total = 0.0
+        r_loss_real_total = 0.0
+        r_loss_balanced_total = 0.0
+        g_loss_total = 0.0
+        g_loss_added_total = 0.0
+        g_loss_balanced_total = 0.0
+        g_loss_final_total = 0.0
+        g_loss_std_total = 0.0
+        r_loss_fake_std_total = 0.0
+        alphas = 0.0
 
         for batch_idx in range(batch_per_epoch):
             image_batch, label_batch = next(dataset)
@@ -159,34 +159,26 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
                                 str(alpha) + ";" + str(r_loss_fake_std) + ";" + str(g_loss_std) + '\n')
 
             # append to lists for epoch summary
-            d_loss_list.append(d_loss)
-            d_loss_real_list.append(d_loss_real)
-            d_loss_fake_list.append(d_loss_fake)
-            r_loss_fake_list.append(r_loss_fake)
-            r_loss_real_list.append(r_loss_real)
-            r_loss_balanced_list.append(r_loss_balanced)
-            g_loss_list.append(g_loss)
-            g_loss_added_list.append(g_loss_added)
-            g_loss_balanced_list.append(g_loss_balanced)
-            g_loss_final_list.append(g_loss_final)
-            r_loss_fake_stds.append(r_loss_fake_std)
-            g_loss_stds.append(g_loss_std)
-            alphas.append(alpha)
-            print(d_loss)
-            print("d_loss_list:")
-            print(d_loss_list)
-            print("d_loss_list mean:")
-            print(np.mean(d_loss_list))
-            print("d_loss_list mean as str:")
-            print(str(np.mean(d_loss_list)))
-            if batch_idx > 5:
-                exit(-1)
-        epoch_summary.write(str(np.mean(d_loss_list)) + ";" + str(np.mean(d_loss_real_list)) + ";" +
-                            str(np.mean(d_loss_fake_list)) + ";" + str(np.mean(r_loss_real_list)) + ";" +
-                            str(np.mean(r_loss_fake_list)) + ";" + str(np.mean(r_loss_balanced_list)) + ";" +
-                            str(np.mean(g_loss_final_list)) + ";" + str(np.mean(g_loss_added_list)) + ";" +
-                            str(np.mean(g_loss_balanced_list)) + ";" + str(np.mean(g_loss_final_list)) + ";" +
-                            str(np.mean(alphas)) + ";" + str(np.mean(r_loss_fake_stds)) + ";" + str(np.mean(g_loss_stds)) + '\n')
+            d_loss_total += d_loss
+            d_loss_real_total += d_loss_real
+            d_loss_fake_total += d_loss_fake
+            r_loss_fake_total += r_loss_fake
+            r_loss_real_total += r_loss_real
+            r_loss_balanced_total += r_loss_balanced
+            g_loss_total += g_loss
+            g_loss_added_total += g_loss_added
+            g_loss_balanced_total += g_loss_balanced
+            g_loss_final_total += g_loss_final
+            g_loss_std_total += g_loss_std
+            r_loss_fake_std_total += r_loss_fake_std
+            alphas += alpha
+
+        epoch_summary.write(str(d_loss_total / (epochs+1)) + ";" + str(d_loss_real_total / (epochs+1)) + ";" +
+                            str(d_loss_fake_total / (epochs+1)) + ";" + str(r_loss_real_total / (epochs+1)) + ";" +
+                            str(r_loss_fake_total / (epochs+1)) + ";" + str(r_loss_balanced_total / (epochs+1)) + ";" +
+                            str(g_loss_final_total / (epochs+1)) + ";" + str(g_loss_added_total / (epochs+1)) + ";" +
+                            str(g_loss_balanced_total / (epochs+1)) + ";" + str(g_loss_final_total / (epochs+1)) + ";" +
+                            str(alphas / (epochs+1)) + ";" + str(r_loss_fake_std_total / (epochs+1)) + ";" + str(g_loss_std_total / (epochs+1)) + '\n')
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
