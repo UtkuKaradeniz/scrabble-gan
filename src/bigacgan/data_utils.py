@@ -183,9 +183,9 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
 
-        # # Save the model every 5 epochs
-        # if (epoch_idx + 1) % 5 == 0:
-        #     checkpoint.save(file_prefix=checkpoint_prefix)
+        # Save the model every 5 epochs
+        if (epoch_idx + 1) % 5 == 0:
+            checkpoint.save(file_prefix=checkpoint_prefix)
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
