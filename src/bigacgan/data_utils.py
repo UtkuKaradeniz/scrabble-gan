@@ -172,13 +172,15 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_stds.append(r_loss_fake_std)
             g_loss_stds.append(g_loss_std)
             alphas.append(alpha)
+            print(d_loss)
             print("d_loss_list:")
             print(d_loss_list)
             print("d_loss_list mean:")
             print(np.mean(d_loss_list))
             print("d_loss_list mean as str:")
             print(str(np.mean(d_loss_list)))
-            exit(-1)
+            if batch_idx > 5:
+                exit(-1)
         epoch_summary.write(str(np.mean(d_loss_list)) + ";" + str(np.mean(d_loss_real_list)) + ";" +
                             str(np.mean(d_loss_fake_list)) + ";" + str(np.mean(r_loss_real_list)) + ";" +
                             str(np.mean(r_loss_fake_list)) + ";" + str(np.mean(r_loss_balanced_list)) + ";" +
