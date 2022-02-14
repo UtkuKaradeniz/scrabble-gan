@@ -123,15 +123,62 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     print('epoch size:           ', epochs)
 
     print('training...')
+    batch_summary = open(gen_path + "/batch_summary.txt", "w")
+    epoch_summary = open(gen_path + "/epoch_summary.txt", "w")
+
+    batch_summary.write("disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
+    epoch_summary.write(
+        "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
+
     for epoch_idx in range(epochs):
         start = time.time()
+
+        d_loss_list = []
+        d_loss_real_list = []
+        d_loss_fake_list = []
+        r_loss_fake_list = []
+        r_loss_real_list = []
+        r_loss_balanced_list = []
+        g_loss_list = []
+        g_loss_added_list = []
+        g_loss_balanced_list = []
+        g_loss_final_list = []
+        r_loss_fake_stds = []
+        g_loss_stds = []
+        alphas = []
 
         for batch_idx in range(batch_per_epoch):
             image_batch, label_batch = next(dataset)
 
-            train_step(epoch_idx, batch_idx, batch_per_epoch, image_batch, label_batch, discriminator, recognizer,
-                       composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size,
-                       latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path)
+            r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
+            d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std = train_step(epoch_idx, batch_idx, batch_per_epoch, image_batch, label_batch, discriminator, recognizer, composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path)
+
+            batch_summary.write(str(d_loss) + ";" + str(d_loss_real) + ";" + str(d_loss_fake) + ";" +
+                                str(r_loss_real) + ";" + str(r_loss_fake) + ";" + str(r_loss_balanced) + ";" +
+                                str(g_loss) + ";" + str(g_loss_added) + ";" + str(g_loss_balanced) + ";" + str(g_loss_final) + ";" +
+                                str(alpha) + ";" + str(r_loss_fake_std) + ";" + str(g_loss_std) + '\n')
+
+            # append to lists for epoch summary
+            d_loss_list.append(d_loss)
+            d_loss_real_list.append(d_loss_real)
+            d_loss_fake_list.append(d_loss_fake)
+            r_loss_fake_list.append(r_loss_fake)
+            r_loss_real_list.append(r_loss_real)
+            r_loss_balanced_list.append(r_loss_balanced)
+            g_loss_list.append(g_loss)
+            g_loss_added_list.append(g_loss_added)
+            g_loss_balanced_list.append(g_loss_balanced)
+            g_loss_final_list.append(g_loss_final)
+            r_loss_fake_stds.append(r_loss_fake_std)
+            g_loss_stds.append(g_loss_std)
+            alphas.append(alpha)
+
+        epoch_summary.write(str(np.mean(d_loss_list)) + ";" + str(np.mean(d_loss_real_list)) + ";" +
+                            str(np.mean(d_loss_fake_list)) + ";" + str(np.mean(r_loss_real_list)) + ";" +
+                            str(np.mean(r_loss_fake_list)) + ";" + str(np.mean(r_loss_balanced_list)) + ";" +
+                            str(np.mean(g_loss_final_list)) + ";" + str(np.mean(g_loss_added_list)) + ";" +
+                            str(np.mean(g_loss_balanced_list)) + ";" + str(np.mean(g_loss_final_list)) + ";" +
+                            str(np.mean(alphas)) + ";" + str(np.mean(r_loss_fake_stds)) + ";" + str(np.mean(g_loss_stds)) + '\n')
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
@@ -208,23 +255,28 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         d_loss, d_loss_real, d_loss_fake, g_loss = loss_fn(d_real_logits, d_fake_logits)
 
         # apply gradient balancing (optional)
+        g_loss_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std = apply_gradient_balancing(r_fake_logits,
+                                                                                                        g_loss, alpha=1)
+        g_loss_added = g_loss + r_fake_logits
         if apply_gradient_balance:
-            g_loss_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std = apply_gradient_balancing(r_fake_logits, g_loss, alpha=1)
+            g_loss_final = g_loss_balanced
         else:
-            g_loss_balanced = g_loss + r_fake_logits
+            g_loss_final = g_loss_added
 
         # compute stats
         r_loss_fake_mean = tf.reduce_mean(r_fake_logits)
         r_loss_real_mean = tf.reduce_mean(r_real_logits)
         g_loss_mean = tf.reduce_mean(g_loss)
+        g_loss_added_mean = tf.reduce_mean(g_loss_added)
+        g_loss_balanced_mean = tf.reduce_mean(g_loss_balanced)
         d_loss_mean = tf.reduce_mean(d_loss)
         d_loss_real_mean = tf.reduce_mean(d_loss_real)
         d_loss_fake_mean = tf.reduce_mean(d_loss_fake)
-        g_loss_balanced_mean = tf.reduce_mean(g_loss_balanced)
+        g_loss_final_mean = tf.reduce_mean(g_loss_final)
 
     tf.print('>%d, %d/%d, d=%.3f, d_real=%.3f, d_fake=%.3f, g_trad=%.3f, r_loss_fake=%.3f, g_loss=%.3f, r=%.3f' % (
         epoch_idx + 1, batch_idx + 1, batch_per_epoch, d_loss_mean, d_loss_real_mean, d_loss_fake_mean, g_loss_mean,
-        r_loss_fake_mean, g_loss_balanced_mean, r_loss_real_mean))
+        r_loss_fake_mean, g_loss_final_mean, r_loss_real_mean))
 
     # compute and apply gradients of D and R
     discriminator.trainable = True
@@ -240,18 +292,22 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         # compute and apply gradients of G
         recognizer.trainable = False
         discriminator.trainable = False
-        gradients_of_generator = gen_tape.gradient(g_loss_balanced, composite_gan.trainable_variables)
+        gradients_of_generator = gen_tape.gradient(g_loss_final_mean, composite_gan.trainable_variables)
         generator_optimizer.apply_gradients(zip(gradients_of_generator, composite_gan.trainable_variables))
 
-    if apply_gradient_balance:
-        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
-                      d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy(),
-                      alpha,  g_loss_std.numpy(), r_loss_fake_std.numpy(),
-                      tf.reduce_mean(r_loss_balanced).numpy()], gen_path, gradient_balance=apply_gradient_balance)
-    else:
-        write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
-                      d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy()],
-                     gen_path, gradient_balance=apply_gradient_balance)
+    # if apply_gradient_balance:
+    #     write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
+    #                   d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy(),
+    #                   alpha,  g_loss_std.numpy(), r_loss_fake_std.numpy(),
+    #                   tf.reduce_mean(r_loss_balanced).numpy()], gen_path, gradient_balance=apply_gradient_balance)
+    # else:
+    #     write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
+    #                   d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy()],
+    #                  gen_path, gradient_balance=apply_gradient_balance)
+
+    return r_loss_fake_mean.numpy(), r_loss_real_mean.numpy(), r_loss_balanced.numpy(), g_loss_mean.numpy(), \
+           g_loss_added_mean.numpy(), g_loss_balanced_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(), \
+           d_loss_fake_mean.numpy(), g_loss_final_mean.numpy(), alpha, r_loss_fake_std.numpy(), g_loss_std.numpy()
 
 
 def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
