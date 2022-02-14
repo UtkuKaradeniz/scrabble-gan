@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
 from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list
-from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator, make_recognizer, make_my_recognizer, make_gan
+from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator, make_recognizer, make_my_recognizer, make_gan, make_style_extractor
 from src.bigacgan.net_loss import hinge, not_saturating
 
 gin.external_configurable(hinge)
@@ -77,15 +77,17 @@ def main():
     else:
         recognizer = make_recognizer(in_dim, seq_len, n_classes + 1, gen_path)
 
+    # style_extractor = make_style_extractor(gen_path, in_dim, kernel_reg, d_bw_attention)
 
     # build composite model (update G through composite model)
+    # gan = make_gan(generator, discriminator, recognizer, style_extractor, gen_path)
     gan = make_gan(generator, discriminator, recognizer, gen_path)
 
     # init optimizer for both generator, discriminator and recognizer
     generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
 
     # # purpose: save and restore models
-    # checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
+    checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
     # checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
     #                                  discriminator_optimizer=discriminator_optimizer,
     #                                  recognizer_optimizer=recognizer_optimizer,
@@ -103,7 +105,7 @@ def main():
     #       discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
     #       latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
     #
-    train(train_dataset, generator, discriminator, recognizer, gan, -1, -1, generator_optimizer,
+    train(train_dataset, generator, discriminator, recognizer, gan, -1, checkpoint_prefix, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
 

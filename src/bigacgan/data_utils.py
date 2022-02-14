@@ -172,7 +172,8 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_stds.append(r_loss_fake_std)
             g_loss_stds.append(g_loss_std)
             alphas.append(alpha)
-
+            print(d_loss_list)
+            print(np.mean(d_loss_list))
         epoch_summary.write(str(np.mean(d_loss_list)) + ";" + str(np.mean(d_loss_real_list)) + ";" +
                             str(np.mean(d_loss_fake_list)) + ";" + str(np.mean(r_loss_real_list)) + ";" +
                             str(np.mean(r_loss_fake_list)) + ";" + str(np.mean(r_loss_balanced_list)) + ";" +
@@ -189,6 +190,8 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
+    batch_summary.close()
+    epoch_summary.close()
     # # save generator model
     # if not os.path.exists(model_path):
     #     os.makedirs(model_path)
@@ -266,6 +269,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         # compute stats
         r_loss_fake_mean = tf.reduce_mean(r_fake_logits)
         r_loss_real_mean = tf.reduce_mean(r_real_logits)
+        r_loss_balanced_mean = tf.reduce_mean(r_loss_balanced)
         g_loss_mean = tf.reduce_mean(g_loss)
         g_loss_added_mean = tf.reduce_mean(g_loss_added)
         g_loss_balanced_mean = tf.reduce_mean(g_loss_balanced)
@@ -295,17 +299,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         gradients_of_generator = gen_tape.gradient(g_loss_final_mean, composite_gan.trainable_variables)
         generator_optimizer.apply_gradients(zip(gradients_of_generator, composite_gan.trainable_variables))
 
-    # if apply_gradient_balance:
-    #     write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
-    #                   d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy(),
-    #                   alpha,  g_loss_std.numpy(), r_loss_fake_std.numpy(),
-    #                   tf.reduce_mean(r_loss_balanced).numpy()], gen_path, gradient_balance=apply_gradient_balance)
-    # else:
-    #     write_to_csv([epoch_idx + 1, batch_idx + 1, r_loss_real_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(),
-    #                   d_loss_fake_mean.numpy(), g_loss_balanced_mean.numpy(), g_loss_mean.numpy(), r_loss_fake_mean.numpy()],
-    #                  gen_path, gradient_balance=apply_gradient_balance)
-
-    return r_loss_fake_mean.numpy(), r_loss_real_mean.numpy(), r_loss_balanced.numpy(), g_loss_mean.numpy(), \
+    return r_loss_fake_mean.numpy(), r_loss_real_mean.numpy(), r_loss_balanced_mean.numpy(), g_loss_mean.numpy(), \
            g_loss_added_mean.numpy(), g_loss_balanced_mean.numpy(), d_loss_mean.numpy(), d_loss_real_mean.numpy(), \
            d_loss_fake_mean.numpy(), g_loss_final_mean.numpy(), alpha, r_loss_fake_std.numpy(), g_loss_std.numpy()
 
@@ -399,7 +393,7 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     for i in range(bucket_size):
         random_words.append([])
 
-    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir))) + '/'
+    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
     with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
@@ -410,22 +404,3 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
 
     return random_words
 
-
-def write_to_csv(row, gen_path, gradient_balance):
-    import csv
-    if gradient_balance:
-        with open(os.path.join(gen_path + '/batch_summary.csv'), "a", newline="") as f:
-            writer = csv.writer(f)
-            if row[0] == 1 and row[1] == 1:
-                headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
-                           'g_loss', 'r_loss_fake', 'alpha', 'g_loss_std', 'r_loss_fake_std', 'r_loss_balanced']
-                writer.writerow(headers)
-            writer.writerow(row)
-    else:
-        with open(os.path.join(gen_path + '/batch_summary.csv'), "a", newline="") as f:
-            writer = csv.writer(f)
-            if row[0] == 1 and row[1] == 1:
-                headers = ['epoch', 'batch', 'r_loss_real', 'd_loss', 'd_loss_real', 'd_loss_fake', 'g_final_loss',
-                           'g_loss', 'r_loss_fake']
-                writer.writerow(headers)
-            writer.writerow(row)

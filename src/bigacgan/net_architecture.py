@@ -75,10 +75,6 @@ def make_recognizer(input_dim, sequence_length, output_classes, gen_path, vis_mo
 
     if vis_model:
         model.summary()
-        if not os.path.exists(gen_path):
-            os.makedirs(gen_path)
-        # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-        #                           to_file=gen_path + 'Recognizer.png')
 
     return model
 
@@ -176,12 +172,9 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, gen_path, vis
 
     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
     # model.load_weights('/scrabble-gan/data/scrabble-gan-model/')
+
     if vis_model:
         model.summary()
-        if not os.path.exists(gen_path):
-            os.makedirs(gen_path)
-        # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-        #                           to_file=gen_path + 'Recognizer.png')
 
     return model
 
@@ -272,13 +265,11 @@ def make_generator(latent_dim, input_dim, embed_y, gen_path, kernel_reg, blocks_
 
     if vis_model:
         model.summary()
-        if not os.path.exists(gen_path):
-            os.makedirs(gen_path)
-        # tf.keras.utils.plot_model(model, show_shapes=True, to_file=gen_path + 'Generator.png')
+
     return model
 
 
-def make_my_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
+def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
     """
      (fully convolutional) Discriminator based on
 
@@ -304,6 +295,7 @@ def make_my_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention
     h, w, c = input_dim
     w = None
     in_channels, out_channels = get_in_out_channels_disc(colors=c, resolution=h)
+
     num_blocks = len(in_channels)
 
     x = layers.Input(shape=(h, w, c))
@@ -333,15 +325,10 @@ def make_my_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention
     if vis_model:
         model.summary()
 
-        if not os.path.exists(gen_path):
-            os.makedirs(gen_path)
-        # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
-        #                           to_file=gen_path + 'Discriminator.png')
-
     return model
 
 
-def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
+def make_my_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
 
     h, w, c = input_dim
     w = None
@@ -385,6 +372,42 @@ def make_discriminator(gen_path, input_dim, kernel_reg, blocks_with_attention, v
             os.makedirs(gen_path)
         # tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True,
         #                           to_file=gen_path + 'Discriminator.png')
+
+    return model
+
+
+def make_style_extractor(gen_path, input_dim, kernel_reg, blocks_with_attention, vis_model=True):
+    h, w, c = input_dim
+    w = None
+    in_channels, out_channels = get_in_out_channels_disc(colors=c, resolution=h)
+    num_blocks = len(in_channels)
+
+    x = layers.Input(shape=(h, w, c))
+    net = x
+
+    # ResNetBlock "down"
+    for block_idx in range(num_blocks):
+        name = "B{}".format(block_idx + 1)
+        is_last_block = block_idx == num_blocks - 1
+        net = ResNetBlockDown(name, out_channels[block_idx], is_last_block, kernel_reg).call(net)
+        if name in blocks_with_attention:
+            net = NonLocalBlock(name, kernel_reg)(net)
+
+    # Final part
+    net = tf.nn.relu(net)
+    net_h = layers.GlobalAveragePooling2D()(net)
+    out_logit = layers.Dense(units=128,
+                             use_bias=False,
+                             activation='linear',
+                             kernel_regularizer=kernel_reg,
+                             kernel_initializer=tf.initializers.orthogonal())(net_h)
+
+    out = out_logit
+    # define model
+    model = tf.keras.Model([x], [out])
+
+    if vis_model:
+        model.summary()
 
     return model
 
