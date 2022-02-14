@@ -84,6 +84,49 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
+def load_gan_input(input_dim, batch_size, reading_dir, char_vector, bucket_size):
+    """
+    load data into tensor (python generator)
+
+    (1) read buckets into memory
+    (2) compute bucket_weights
+    (3) create python generator
+
+    :param input_dim:
+    :param batch_size:
+    :param reading_dir:
+    :param char_vector:
+    :param bucket_size:
+    :return:
+    """
+
+    h, w, c = input_dim
+
+    data_buckets = {}
+    bucket_weights = {}
+    number_samples = 0
+
+    imgs = []
+
+    reading_dir_bucket = reading_dir + str(i) + '/'
+    file_list = os.listdir(reading_dir_bucket)
+
+    for file in file_list:
+        with open(reading_dir_bucket + file, 'r', encoding='utf8') as f:
+            img = cv2.imread(os.path.join(reading_dir_bucket, os.path.splitext(file)[0] + '.png'), 0)
+            imgs.append(img)
+            number_samples += 1
+
+    # convert to numpy array
+    image_batch = np.array(imgs).astype('float32')
+
+    # normalize images to [-1, 1]
+    image_batch = image_batch.reshape(-1, h, int((h / 2) * bucket_size), c)
+    image_batch = (image_batch - 127.5) / 127.5
+
+    return image_batch
+
+
 def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix,
           generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, buffer_size, batch_size,
           epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words,
@@ -126,9 +169,9 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     batch_summary = open(gen_path + "/batch_summary.txt", "w")
     epoch_summary = open(gen_path + "/epoch_summary.txt", "w")
 
-    batch_summary.write("disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
     epoch_summary.write(
         "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
+    batch_summary.write("disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
 
     for epoch_idx in range(epochs):
         start = time.time()
@@ -173,12 +216,15 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
-        epoch_summary.write(str(d_loss_total / (epochs+1)) + ";" + str(d_loss_real_total / (epochs+1)) + ";" +
-                            str(d_loss_fake_total / (epochs+1)) + ";" + str(r_loss_real_total / (epochs+1)) + ";" +
-                            str(r_loss_fake_total / (epochs+1)) + ";" + str(r_loss_balanced_total / (epochs+1)) + ";" +
-                            str(g_loss_final_total / (epochs+1)) + ";" + str(g_loss_added_total / (epochs+1)) + ";" +
-                            str(g_loss_balanced_total / (epochs+1)) + ";" + str(g_loss_final_total / (epochs+1)) + ";" +
-                            str(alphas / (epochs+1)) + ";" + str(r_loss_fake_std_total / (epochs+1)) + ";" + str(g_loss_std_total / (epochs+1)) + '\n')
+            print(d_loss)
+            print(d_loss_total)
+
+        epoch_summary.write(str(d_loss_total / (epoch_idx+1)) + ";" + str(d_loss_real_total / (epoch_idx+1)) + ";" +
+                            str(d_loss_fake_total / (epoch_idx+1)) + ";" + str(r_loss_real_total / (epoch_idx+1)) + ";" +
+                            str(r_loss_fake_total / (epoch_idx+1)) + ";" + str(r_loss_balanced_total / (epoch_idx+1)) + ";" +
+                            str(g_loss_final_total / (epoch_idx+1)) + ";" + str(g_loss_added_total / (epoch_idx+1)) + ";" +
+                            str(g_loss_balanced_total / (epoch_idx+1)) + ";" + str(g_loss_final_total / (epoch_idx+1)) + ";" +
+                            str(alphas / (epoch_idx+1)) + ";" + str(r_loss_fake_std_total / (epoch_idx+1)) + ";" + str(g_loss_std_total / (epoch_idx+1)) + '\n')
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)

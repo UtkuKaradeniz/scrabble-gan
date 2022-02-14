@@ -442,7 +442,7 @@ def make_gan(g_model, d_model, r_model, vis_model=True):
 
     return model
 
-# def make_gan(g_model, d_model, r_model, vis_model=True):
+# def make_gan(g_model, d_model, r_model, in_dim, is_last_block, kernel_reg, vis_model=True):
 #     """
 #     Update G through composite model
 #
@@ -464,7 +464,7 @@ def make_gan(g_model, d_model, r_model, vis_model=True):
 #
 #     x = layers.Input(shape=(h, w, c))
 #     net = x
-#
+#   # style extractor
 #     # ResNetBlock "down"
 #     for block_idx in range(num_blocks):
 #         name = "B{}".format(block_idx + 1)
