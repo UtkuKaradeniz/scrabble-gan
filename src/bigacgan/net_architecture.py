@@ -157,8 +157,8 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, gen_path, vis
     blstm = layers.Dropout(rate=0.5)(blstm)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(blstm)
 
-    # model_a = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
-    # model_a.load_weights()
+    model_a = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
+    model.load_weights('/scrabble-gan/data/scrabble-gan-model/')
 
     def ctc_loss(args):
         """
@@ -178,7 +178,7 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, gen_path, vis
         [labels, per_frame_predictions, input_length, label_length])
 
     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
-    model.load_weights('/scrabble-gan/data/scrabble-gan-model/')
+    # model.load_weights('/scrabble-gan/data/scrabble-gan-model/')
     if vis_model:
         model.summary()
         if not os.path.exists(gen_path):
