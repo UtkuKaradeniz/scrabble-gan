@@ -67,21 +67,21 @@ def main():
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
 
     # init generator, discriminator and recognizer
-    generator = make_generator(latent_dim, in_dim, embed_y, gen_path, kernel_reg, g_bw_attention, n_classes)
+    generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
     if my_disc:
-        discriminator = make_my_discriminator(gen_path, in_dim, kernel_reg, d_bw_attention)
+        discriminator = make_my_discriminator(in_dim, kernel_reg)
     else:
-        discriminator = make_discriminator(gen_path, in_dim, kernel_reg, d_bw_attention)
+        discriminator = make_discriminator(in_dim, kernel_reg, d_bw_attention)
     if my_rec:
-        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1, gen_path)
+        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1)
     else:
-        recognizer = make_recognizer(in_dim, seq_len, n_classes + 1, gen_path)
+        recognizer = make_recognizer(in_dim, seq_len, n_classes + 1)
 
     # style_extractor = make_style_extractor(gen_path, in_dim, kernel_reg, d_bw_attention)
 
     # build composite model (update G through composite model)
     # gan = make_gan(generator, discriminator, recognizer, style_extractor, gen_path)
-    gan = make_gan(generator, discriminator, recognizer, gen_path)
+    gan = make_gan(generator, discriminator, recognizer)
 
     # init optimizer for both generator, discriminator and recognizer
     generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
