@@ -178,7 +178,7 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, gen_path, vis
         [labels, per_frame_predictions, input_length, label_length])
 
     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
-    model.load_weights('/scrabble-gan/data/scrabble-gan-model/cktp2')
+    model.load_weights('/scrabble-gan/data/scrabble-gan-model/')
     if vis_model:
         model.summary()
         if not os.path.exists(gen_path):
