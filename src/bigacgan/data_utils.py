@@ -84,7 +84,7 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
-def load_gan_input(input_dim, batch_size, reading_dir, char_vector, bucket_size):
+def load_style_input(input_dim, batch_size, bucket_size):
     """
     load data into tensor (python generator)
 
@@ -102,15 +102,14 @@ def load_gan_input(input_dim, batch_size, reading_dir, char_vector, bucket_size)
 
     h, w, c = input_dim
 
-    data_buckets = {}
-    bucket_weights = {}
     number_samples = 0
 
     imgs = []
 
-    reading_dir_bucket = reading_dir + str(i) + '/'
+    reading_dir_bucket = os.path.join('../../data/', 'Utku-40/')
     file_list = os.listdir(reading_dir_bucket)
-
+    print(file_list)
+    exit(-1)
     for file in file_list:
         with open(reading_dir_bucket + file, 'r', encoding='utf8') as f:
             img = cv2.imread(os.path.join(reading_dir_bucket, os.path.splitext(file)[0] + '.png'), 0)
@@ -216,15 +215,12 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
-            print(d_loss)
-            print(d_loss_total)
-
-        epoch_summary.write(str(d_loss_total / (epoch_idx+1)) + ";" + str(d_loss_real_total / (epoch_idx+1)) + ";" +
-                            str(d_loss_fake_total / (epoch_idx+1)) + ";" + str(r_loss_real_total / (epoch_idx+1)) + ";" +
-                            str(r_loss_fake_total / (epoch_idx+1)) + ";" + str(r_loss_balanced_total / (epoch_idx+1)) + ";" +
-                            str(g_loss_final_total / (epoch_idx+1)) + ";" + str(g_loss_added_total / (epoch_idx+1)) + ";" +
-                            str(g_loss_balanced_total / (epoch_idx+1)) + ";" + str(g_loss_final_total / (epoch_idx+1)) + ";" +
-                            str(alphas / (epoch_idx+1)) + ";" + str(r_loss_fake_std_total / (epoch_idx+1)) + ";" + str(g_loss_std_total / (epoch_idx+1)) + '\n')
+        epoch_summary.write(str(d_loss_total / batch_per_epoch) + ";" + str(d_loss_real_total / batch_per_epoch) + ";" +
+                            str(d_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_real_total / batch_per_epoch) + ";" +
+                            str(r_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_balanced_total / batch_per_epoch) + ";" +
+                            str(g_loss_final_total / batch_per_epoch) + ";" + str(g_loss_added_total / batch_per_epoch) + ";" +
+                            str(g_loss_balanced_total / batch_per_epoch) + ";" + str(g_loss_final_total / batch_per_epoch) + ";" +
+                            str(alphas / batch_per_epoch) + ";" + str(r_loss_fake_std_total / batch_per_epoch) + ";" + str(g_loss_std_total / batch_per_epoch) + '\n')
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
