@@ -178,6 +178,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             print(np.mean(d_loss_list))
             print("d_loss_list mean as str:")
             print(str(np.mean(d_loss_list)))
+            exit(-1)
         epoch_summary.write(str(np.mean(d_loss_list)) + ";" + str(np.mean(d_loss_real_list)) + ";" +
                             str(np.mean(d_loss_fake_list)) + ";" + str(np.mean(r_loss_real_list)) + ";" +
                             str(np.mean(r_loss_fake_list)) + ";" + str(np.mean(r_loss_balanced_list)) + ";" +
