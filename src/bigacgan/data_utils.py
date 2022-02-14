@@ -172,8 +172,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_stds.append(r_loss_fake_std)
             g_loss_stds.append(g_loss_std)
             alphas.append(alpha)
-            print(d_loss_list)
-            print(np.mean(d_loss_list))
+            
         epoch_summary.write(str(np.mean(d_loss_list)) + ";" + str(np.mean(d_loss_real_list)) + ";" +
                             str(np.mean(d_loss_fake_list)) + ";" + str(np.mean(r_loss_real_list)) + ";" +
                             str(np.mean(r_loss_fake_list)) + ";" + str(np.mean(r_loss_balanced_list)) + ";" +
@@ -296,7 +295,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         # compute and apply gradients of G
         recognizer.trainable = False
         discriminator.trainable = False
-        gradients_of_generator = gen_tape.gradient(g_loss_final_mean, composite_gan.trainable_variables)
+        gradients_of_generator = gen_tape.gradient(g_loss_final, composite_gan.trainable_variables)
         generator_optimizer.apply_gradients(zip(gradients_of_generator, composite_gan.trainable_variables))
 
     return r_loss_fake_mean.numpy(), r_loss_real_mean.numpy(), r_loss_balanced_mean.numpy(), g_loss_mean.numpy(), \
