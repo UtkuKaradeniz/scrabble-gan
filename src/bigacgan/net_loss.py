@@ -23,7 +23,7 @@ def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
                                                           name="cross_entropy_s_fake")
     s_loss = s_loss_real
 
-    g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=(d_fake_logits+s_fake_logits), labels=tf.ones_like((d_fake_logits+s_fake_logits)),
+    g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=(d_fake_logits+s_fake_logits), labels=tf.ones_like(d_fake_logits+s_fake_logits),
                                                      name="cross_entropy_g")
     return d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_loss_real, s_loss_fake
 
