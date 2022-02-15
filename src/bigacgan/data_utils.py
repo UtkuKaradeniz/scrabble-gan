@@ -128,12 +128,20 @@ def load_style_input(input_dim, batch_size, bucket_size):
         img = np.array(img).astype('float32')
 
         # resize image
-        rate = min(h / ht, w / wt)
-        if rate == h / ht:
-            dim = (int(wt * rate), h)
-        else:
-            dim = (w, int(ht * rate))
-        img = cv2.resize(img, dim, interpolation=cv2.INTER_CUBIC)
+        # rate = min(h / ht, w / wt)
+        # print(h/ht)
+        # print(w / wt)
+        # print(rate)
+        # if rate == (h / ht):
+        #     print(h)
+        #     print(int(wt * rate))
+        #     dim = (int(wt * rate), h)
+        # else:
+        #     dim = (w, int(ht * rate))
+
+        rate = h / float(ht)
+        dim = (int(wt * rate), h)
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
 
         img_width = img.shape[-1]
         if img_width > w:
@@ -143,6 +151,8 @@ def load_style_input(input_dim, batch_size, bucket_size):
             img_final[:, :img_width] = img
         else:
             img_final = img
+
+        assert img_final.shape == (32, 160)
 
         # normalize images to [-1, 1]
         image_batch = (img_final - 127.5) / 127.5
@@ -352,6 +362,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     sequence_length_real = len(labels[0])
     sequence_length_fake = random_bucket_idx + 1
 
+    # list of (32, 160, 1) tensors -> (b, 32, 160, 1)
     my_imgs_concat = tf.stack(my_imgs, axis=0)
 
     # compute loss & update gradients
