@@ -156,13 +156,13 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False
     model_1 = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
 
     if restore:
-        path_to_rc_checkpoint = os.path.join('/scrabble-gan/data/simpleHTR_TF2/checkpoints/ex02/', '275/checkpoint')
+        path_to_rc_checkpoint = os.path.join('/scrabble-gan/data/simpleHTR_TF2/checkpoints/ex02/', '275/')
         latest_checkpoint = tf.train.latest_checkpoint(path_to_rc_checkpoint)
         # if model must be restored (for inference), there must be a snapshot
         if restore and not latest_checkpoint:
             raise Exception('No saved model found in: ' + path_to_rc_checkpoint)
         load_status = model_1.load_weights(latest_checkpoint)
-        load_status.assert_confirmed()
+        load_status.assert_consumed()
         print("Rec. Model from " + path_to_rc_checkpoint + "/275" + " loaded")
 
     def ctc_loss(args):
