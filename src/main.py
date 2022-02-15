@@ -70,12 +70,16 @@ def main():
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
     if my_disc:
+        print("using my discriminator")
         discriminator = make_my_discriminator(in_dim, kernel_reg)
     else:
+        print("using scrabbleGAN discriminator")
         discriminator = make_discriminator(in_dim, kernel_reg, d_bw_attention)
     if my_rec:
+        print("using my recognizer")
         recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1)
     else:
+        print("using scrabbleGAN recognizer")
         recognizer = make_recognizer(in_dim, seq_len, n_classes + 1)
 
     # style_extractor = make_style_extractor(gen_path, in_dim, kernel_reg, d_bw_attention)
