@@ -352,12 +352,14 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     sequence_length_real = len(labels[0])
     sequence_length_fake = random_bucket_idx + 1
 
+    my_imgs_concat = tf.concat(my_imgs, axis=0)
+
     # compute loss & update gradients
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape, tf.GradientTape() as rec_tape, tf.GradientTape() as style_tape:
         # generate images + compute D(fake) + R(fake)
         inp_len_fake = -1 + sequence_length_fake * 4
         gen_images, d_fake_logits, r_fake_logits, s_fake_logits = composite_gan(
-            [[my_imgs], fake_labels, np.array([[inp_len_fake]] * batch_size),
+            [my_imgs_concat, fake_labels, np.array([[inp_len_fake]] * batch_size),
              np.array([[sequence_length_fake]] * batch_size)], training=True)
 
         # compute D(real)
