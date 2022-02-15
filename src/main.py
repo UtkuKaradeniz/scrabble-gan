@@ -89,12 +89,12 @@ def main():
 
     # # purpose: save and restore models
     checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
-    # checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
-    #                                  discriminator_optimizer=discriminator_optimizer,
-    #                                  recognizer_optimizer=recognizer_optimizer,
-    #                                  generator=generator,
-    #                                  discriminator=discriminator,
-    #                                  recognizer=recognizer)
+    checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                                     discriminator_optimizer=discriminator_optimizer,
+                                     recognizer_optimizer=recognizer_optimizer,
+                                     generator=generator,
+                                     discriminator=discriminator,
+                                     recognizer=recognizer)
 
     # reuse this seed + labels overtime to visualize progress in the animated GIF
     seed = tf.random.normal([num_gen, latent_dim])
@@ -106,7 +106,7 @@ def main():
     #       discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
     #       latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
     #
-    train(train_dataset, generator, discriminator, recognizer, gan, -1, checkpoint_prefix, generator_optimizer,
+    train(train_dataset, generator, discriminator, recognizer, gan, checkpoint, checkpoint_prefix, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
 

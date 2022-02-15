@@ -6,3 +6,5 @@ src/dinterface/__pycache__/*
 src/dinterface/iam_handwriting_db.py
 src/scrabble_gan.gin
 *.out
+src/bigacgan/checkpoint
+src/bigacgan/cktp*.index
