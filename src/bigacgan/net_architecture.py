@@ -79,7 +79,7 @@ def make_recognizer(input_dim, sequence_length, output_classes, vis_model=True):
     return model
 
 
-def make_my_recognizer(input_dim, sequence_length, output_classes, vis_model=True):
+def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False, vis_model=True):
     """
     Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
 
@@ -171,7 +171,9 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, vis_model=Tru
         [labels, per_frame_predictions, input_length, label_length])
 
     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
-    # model.load_weights('/scrabble-gan/data/scrabble-gan-model/')
+    if restore:
+        path_to_rc_chekpoint = '../../data/simpleHTR_TF2/checkpoints/ex02/'
+        model.load_weights(os.path.join(path_to_rc_chekpoint, '275/'))
 
     if vis_model:
         model.summary()

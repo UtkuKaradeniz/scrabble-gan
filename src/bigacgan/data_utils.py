@@ -108,8 +108,7 @@ def load_style_input(input_dim, batch_size, bucket_size):
 
     reading_dir_bucket = os.path.join('../../data/', 'Utku-40/')
     file_list = os.listdir(reading_dir_bucket)
-    print(file_list)
-    exit(-1)
+
     for file in file_list:
         with open(reading_dir_bucket + file, 'r', encoding='utf8') as f:
             img = cv2.imread(os.path.join(reading_dir_bucket, os.path.splitext(file)[0] + '.png'), 0)
@@ -237,7 +236,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     # if not os.path.exists(model_path):
     #     os.makedirs(model_path)
     #
-    # generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
+    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 
 # Notice the use of `tf.function`
