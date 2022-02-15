@@ -233,7 +233,7 @@ def make_generator(latent_dim, input_dim, embed_y, kernel_reg, blocks_with_atten
     w = None
     in_channels_style, out_channels_style = get_in_out_channels_disc(colors=c, resolution=h)
 
-    num_blocks2 = len(in_channels)
+    num_blocks2 = len(in_channels_style)
 
     net = imgs
 
