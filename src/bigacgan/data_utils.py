@@ -357,7 +357,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         # generate images + compute D(fake) + R(fake)
         inp_len_fake = -1 + sequence_length_fake * 4
         gen_images, d_fake_logits, r_fake_logits, s_fake_logits = composite_gan(
-            [my_imgs, fake_labels, np.array([[inp_len_fake]] * batch_size),
+            [[my_imgs], fake_labels, np.array([[inp_len_fake]] * batch_size),
              np.array([[sequence_length_fake]] * batch_size)], training=True)
 
         # compute D(real)
