@@ -27,8 +27,8 @@ shared_specs.my_disc=0                           #1
 
 # I/O and data structure
 io.base_path = '/scrabble-gan/'
-io.checkpoint_dir = '/data/scrabble-gan-checkpoints/'
-io.gen_imgs_dir = '/data/output/ex48/'
+io.checkpoint_dir = '/data/scrabble-gan-checkpoints/ex50/'
+io.gen_imgs_dir = '/data/output/ex50/'
 io.model_dir = '/data/scrabble-gan-model/'
 
 # Dataset
