@@ -218,7 +218,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
         epoch_summary.write(str(d_loss_total / batch_per_epoch) + ";" + str(d_loss_real_total / batch_per_epoch) + ";" +
                             str(d_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_real_total / batch_per_epoch) + ";" +
                             str(r_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_balanced_total / batch_per_epoch) + ";" +
-                            str(g_loss_final_total / batch_per_epoch) + ";" + str(g_loss_added_total / batch_per_epoch) + ";" +
+                            str(g_loss_total / batch_per_epoch) + ";" + str(g_loss_added_total / batch_per_epoch) + ";" +
                             str(g_loss_balanced_total / batch_per_epoch) + ";" + str(g_loss_final_total / batch_per_epoch) + ";" +
                             str(alphas / batch_per_epoch) + ";" + str(r_loss_fake_std_total / batch_per_epoch) + ";" + str(g_loss_std_total / batch_per_epoch) + '\n')
 
