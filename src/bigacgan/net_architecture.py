@@ -79,17 +79,7 @@ def make_recognizer(input_dim, sequence_length, output_classes, vis_model=True):
     return model
 
 
-def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False, vis_model=True):
-    """
-    Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
-
-    :param input_dim:
-    :param sequence_length:
-    :param output_classes:
-    :param gen_path:
-    :param vis_model:
-    :return:
-    """
+def my_recognizer(input_dim, output_classes, restore=False):
 
     h, w, c = input_dim
 
@@ -153,7 +143,7 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False
     blstm = layers.Dropout(rate=0.5)(blstm)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(blstm)
 
-    model_1 = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
+    model_to_load = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
 
     if restore:
         path_to_rc_checkpoint = os.path.join('/scrabble-gan/data/simpleHTR_TF2/checkpoints/ex02/', '275/')
@@ -161,9 +151,32 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False
         # if model must be restored (for inference), there must be a snapshot
         if restore and not latest_checkpoint:
             raise Exception('No saved model found in: ' + path_to_rc_checkpoint)
-        load_status = model_1.load_weights(latest_checkpoint)
+        load_status = model_to_load.load_weights(latest_checkpoint)
         load_status.assert_consumed()
         print("Rec. Model from " + path_to_rc_checkpoint + "/275" + " loaded")
+
+    return model_to_load
+
+
+def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False, vis_model=True):
+    """
+    Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
+
+    :param input_dim:
+    :param sequence_length:
+    :param output_classes:
+    :param gen_path:
+    :param vis_model:
+    :return:
+    """
+
+    h, w, c = input_dim
+
+    w = None
+    # define input layer
+    inp_imgs = layers.Input(shape=(h, w, c), name='input_images')
+
+    per_frame_predictions = my_recognizer(input_dim, output_classes, restore)(inp_imgs)
 
     def ctc_loss(args):
         """
@@ -185,6 +198,7 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False
     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
 
     if vis_model:
+        print("################################ Recognizer Model: ################################ ")
         model.summary()
 
     return model
