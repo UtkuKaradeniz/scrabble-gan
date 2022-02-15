@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
 from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, load_style_input
-from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator, make_recognizer, make_my_recognizer, make_gan, make_style_extractor
+from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator, make_recognizer, make_my_recognizer, make_gan, make_style_extractor, make_style_promoter
 from src.bigacgan.net_loss import hinge, not_saturating
 
 gin.external_configurable(hinge)
@@ -23,14 +23,16 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 @gin.configurable
-def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply_gradient_balance, rmsprop):
+def setup_optimizer(g_lr, d_lr, r_lr, w_lr, beta_1, beta_2, loss_fn, disc_iters, apply_gradient_balance, rmsprop):
     generator_optimizer = tf.keras.optimizers.Adam(learning_rate=g_lr, beta_1=beta_1, beta_2=beta_2)
     discriminator_optimizer = tf.keras.optimizers.Adam(learning_rate=d_lr, beta_1=beta_1, beta_2=beta_2)
     if rmsprop:
         recognizer_optimizer = tf.keras.optimizers.RMSprop(learning_rate=r_lr)
     else:
         recognizer_optimizer = tf.keras.optimizers.Adam(learning_rate=r_lr, beta_1=beta_1, beta_2=beta_2)
-    return generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance
+    stylepromoter_optimizer = tf.keras.optimizers.Adam(learning_rate=w_lr, beta_1=beta_1, beta_2=beta_2)
+    return generator_optimizer, discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, \
+           loss_fn, disc_iters, apply_gradient_balance
 
 
 @gin.configurable('shared_specs')
@@ -65,7 +67,7 @@ def main():
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
-    # style_input = load_style_input(in_dim, batch_size, bucket_size)
+    train_imgs, validate_imgs = load_style_input(in_dim, batch_size, bucket_size)
 
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
@@ -79,22 +81,25 @@ def main():
         recognizer = make_recognizer(in_dim, seq_len, n_classes + 1)
 
     # style_extractor = make_style_extractor(gen_path, in_dim, kernel_reg, d_bw_attention)
+    style_promoter = make_style_promoter(in_dim, kernel_reg, d_bw_attention)
 
     # build composite model (update G through composite model)
-    # gan = make_gan(generator, discriminator, recognizer, style_extractor, gen_path)
-    gan = make_gan(generator, discriminator, recognizer)
+    gan = make_gan(generator, discriminator, recognizer, style_promoter, gen_path)
+    # gan = make_gan(generator, discriminator, recognizer)
 
     # init optimizer for both generator, discriminator and recognizer
-    generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
+    generator_optimizer, discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
 
     # # purpose: save and restore models
     checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
-    # checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
-    #                                  discriminator_optimizer=discriminator_optimizer,
-    #                                  recognizer_optimizer=recognizer_optimizer,
-    #                                  generator=generator,
-    #                                  discriminator=discriminator,
-    #                                  recognizer=recognizer)
+    checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                                     discriminator_optimizer=discriminator_optimizer,
+                                     recognizer_optimizer=recognizer_optimizer,
+                                     stylepromoter_optimizer=stylepromoter_optimizer,
+                                     generator=generator,
+                                     discriminator=discriminator,
+                                     recognizer=recognizer,
+                                     style_promoter=style_promoter)
 
     # reuse this seed + labels overtime to visualize progress in the animated GIF
     seed = tf.random.normal([num_gen, latent_dim])
@@ -106,8 +111,8 @@ def main():
     #       discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
     #       latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
     #
-    train(train_dataset, generator, discriminator, recognizer, gan, -1, checkpoint_prefix, generator_optimizer,
-          discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
+    train(train_dataset, generator, discriminator, recognizer, style_promoter, gan, checkpoint, checkpoint_prefix, generator_optimizer,
+          discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, train_imgs, [seed, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
 
     # use imageio to create an animated gif using the images saved during training.
