@@ -411,9 +411,9 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         s_loss_real_mean = tf.reduce_mean(s_loss_real)
         s_loss_fake_mean = tf.reduce_mean(s_loss_fake)
 
-    tf.print('>%d, %d/%d, d=%.3f, d_real=%.3f, d_fake=%.3f, g_trad=%.3f, r_loss_fake=%.3f, g_loss=%.3f, r=%.3f' % (
+    tf.print('>%d, %d/%d, d=%.3f, d_real=%.3f, d_fake=%.3f, g_trad=%.3f, r_loss_fake=%.3f, g_loss=%.3f, r=%.3f, s=%.3f' % (
         epoch_idx + 1, batch_idx + 1, batch_per_epoch, d_loss_mean, d_loss_real_mean, d_loss_fake_mean, g_loss_mean,
-        r_loss_fake_mean, g_loss_final_mean, r_loss_real_mean))
+        r_loss_fake_mean, g_loss_final_mean, r_loss_real_mean, s_loss_mean))
 
     # compute and apply gradients of D and R
     discriminator.trainable = True
