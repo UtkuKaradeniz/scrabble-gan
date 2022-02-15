@@ -256,7 +256,11 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
             my_img_batch = random.choices(my_imgs, k=batch_size)
 
             r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
-            d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std, s_loss, s_loss_real, s_loss_fake  = train_step(epoch_idx, batch_idx, batch_per_epoch, my_img_batch, label_batch, discriminator, recognizer, style_promoter, composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, my_imgs, batch_size, latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path)
+            d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std, s_loss, s_loss_real, s_loss_fake = \
+                train_step(epoch_idx, batch_idx, batch_per_epoch, image_batch, label_batch, discriminator, recognizer,
+                           style_promoter, composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer,
+                           stylepromoter_optimizer, my_img_batch, batch_size, latent_dim, loss_fn, disc_iters, apply_gradient_balance,
+                           random_words, bucket_size, gen_path)
 
             batch_summary.write(str(d_loss) + ";" + str(d_loss_real) + ";" + str(d_loss_fake) + ";" +
                                 str(r_loss_real) + ";" + str(r_loss_fake) + ";" + str(r_loss_balanced) + ";" +
