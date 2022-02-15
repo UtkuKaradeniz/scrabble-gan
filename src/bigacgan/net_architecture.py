@@ -172,8 +172,11 @@ def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False
 
     model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
     if restore:
-        path_to_rc_chekpoint = '../../data/simpleHTR_TF2/checkpoints/ex02/'
-        model.load_weights(os.path.join(path_to_rc_chekpoint, '275/'))
+        path_to_rc_chekpoint = '/scrabble-gan/data/simpleHTR_TF2/checkpoints/ex02/'
+        #TODO:
+        load_status = model.load_weights(os.path.join(path_to_rc_chekpoint, '275/checkpoint'))
+        load_status.assert_confirmed()
+        print("Rec. Model from " + path_to_rc_checkpoint + "/275" + " loaded")
 
     if vis_model:
         model.summary()

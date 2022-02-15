@@ -164,8 +164,8 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     print('epoch size:           ', epochs)
 
     print('training...')
-    batch_summary = open(gen_path + "/batch_summary.txt", "w")
-    epoch_summary = open(gen_path + "/epoch_summary.txt", "w")
+    batch_summary = open(gen_path + "batch_summary.txt", "w")
+    epoch_summary = open(gen_path + "epoch_summary.txt", "w")
 
     epoch_summary.write(
         "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
