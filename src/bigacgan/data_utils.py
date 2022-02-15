@@ -377,7 +377,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         d_real_logits = discriminator([images], training=True)
 
         # compute D(real)
-        s_real_logits = style_promoter([my_imgs], training=True)
+        s_real_logits = style_promoter([my_imgs_concat], training=True)
 
         # compute R(real)
         inp_len_real = -1 + sequence_length_real * 4
