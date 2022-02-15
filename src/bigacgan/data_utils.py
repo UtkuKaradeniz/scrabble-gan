@@ -352,7 +352,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     sequence_length_real = len(labels[0])
     sequence_length_fake = random_bucket_idx + 1
 
-    my_imgs_concat = tf.concat(my_imgs, axis=0)
+    my_imgs_concat = tf.stack(my_imgs, axis=0)
 
     # compute loss & update gradients
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape, tf.GradientTape() as rec_tape, tf.GradientTape() as style_tape:
