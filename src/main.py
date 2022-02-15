@@ -77,7 +77,7 @@ def main():
         discriminator = make_discriminator(in_dim, kernel_reg, d_bw_attention)
     if my_rec:
         print("using my recognizer")
-        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1, restore=True)
+        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 2, restore=True)
     else:
         print("using scrabbleGAN recognizer")
         recognizer = make_recognizer(in_dim, seq_len, n_classes + 1)
