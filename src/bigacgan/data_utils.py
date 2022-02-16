@@ -263,7 +263,7 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
 
         for batch_idx in range(batch_per_epoch):
             image_batch, label_batch = next(dataset)
-            my_img_batch = random.choices(my_imgs, k=batch_size*2)
+            my_img_batch = random.choices(my_imgs, k=batch_size)
 
             r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
             d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std, s_loss, s_loss_real, s_loss_fake = \
@@ -317,10 +317,8 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
     batch_summary.close()
     epoch_summary.close()
     # # save generator model
-    # if not os.path.exists(model_path):
-    #     os.makedirs(model_path)
-    #
-    # generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
+
+    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 
 # Notice the use of `tf.function`
@@ -363,22 +361,21 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     sequence_length_fake = random_bucket_idx + 1
 
     # list of (32, 160, 1) tensors -> (b, 32, 160, 1)
-    my_imgs_concat1 = tf.stack(my_imgs[:batch_size], axis=0)
-    my_imgs_concat2 = tf.stack(my_imgs, axis=0)
+    my_imgs_concat = tf.stack(my_imgs, axis=0)
 
     # compute loss & update gradients
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape, tf.GradientTape() as rec_tape, tf.GradientTape() as style_tape:
         # generate images + compute D(fake) + R(fake)
         inp_len_fake = -1 + sequence_length_fake * 4
         gen_images, d_fake_logits, r_fake_logits, s_fake_logits = composite_gan(
-            [my_imgs_concat1, fake_labels, np.array([[inp_len_fake]] * batch_size),
+            [my_imgs_concat, fake_labels, np.array([[inp_len_fake]] * batch_size),
              np.array([[sequence_length_fake]] * batch_size)], training=True)
 
         # compute D(real)
         d_real_logits = discriminator([images], training=True)
 
         # compute D(real)
-        s_real_logits = style_promoter([my_imgs_concat2], training=True)
+        s_real_logits = style_promoter([my_imgs_concat], training=True)
 
         # compute R(real)
         inp_len_real = -1 + sequence_length_real * 4

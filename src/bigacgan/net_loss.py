@@ -21,7 +21,7 @@ def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
                                                           name="cross_entropy_s_real")
     s_loss_fake = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_fake_logits, labels=tf.zeros_like(s_fake_logits),
                                                           name="cross_entropy_s_fake")
-    s_loss = s_loss_real
+    s_loss = s_loss_real + s_loss_fake
 
     g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=(d_fake_logits+s_fake_logits), labels=tf.ones_like(d_fake_logits+s_fake_logits),
                                                      name="cross_entropy_g")
@@ -42,6 +42,6 @@ def hinge(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
     d_loss = d_loss_real + d_loss_fake
     s_loss_real = tf.nn.relu(1.0 - s_real_logits)
     s_loss_fake = tf.nn.relu(1.0 + s_fake_logits)
-    s_loss = s_loss_real
+    s_loss = s_loss_real + s_loss_fake
     g_loss = - (d_fake_logits + s_fake_logits)
     return d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_loss_real, s_loss_fake
