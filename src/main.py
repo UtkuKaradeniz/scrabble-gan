@@ -91,7 +91,7 @@ def main():
     generator_optimizer, discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
 
     # # purpose: save and restore models
-    checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
+    # checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
     checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                                      discriminator_optimizer=discriminator_optimizer,
                                      recognizer_optimizer=recognizer_optimizer,
@@ -108,7 +108,7 @@ def main():
     labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(num_gen)], np.int32)
 
     # start training
-    train(train_dataset, generator, discriminator, recognizer, style_promoter, gan, checkpoint, checkpoint_prefix, generator_optimizer,
+    train(train_dataset, generator, discriminator, recognizer, style_promoter, gan, checkpoint, ckpt_path, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, train_imgs, [seed, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
 

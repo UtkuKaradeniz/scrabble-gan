@@ -226,24 +226,41 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
     :param char_vector:                 valid vocabulary represented as array of chars/ string
     :return:
     """
+    # define checkpoint save paths
+    generator_save_dir = os.path.join(checkpoint_prefix, 'generator/')
+    recognizer_save_dir = os.path.join(checkpoint_prefix, 'recognizer/')
+
+    # create folders to save models
+    if not os.path.exists(generator_save_dir):
+        os.makedirs(generator_save_dir)
+    if not os.path.exists(recognizer_save_dir):
+        os.makedirs(generator_save_dir)
+
     batch_per_epoch = int(buffer_size / batch_size) + 1
 
+    # print statistics about training
     print('no. training samples: ', buffer_size)
     print('batch size:           ', batch_size)
     print('no. batch_per_epoch:  ', batch_per_epoch)
     print('epoch size:           ', epochs)
 
     print('training...')
+
+    # create summary files for batch and epoch
     batch_summary = open(gen_path + "/batch_summary.txt", "w")
     epoch_summary = open(gen_path + "/epoch_summary.txt", "w")
 
-    epoch_summary.write(
-        "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std;s_loss;s_loss_real;s_loss_fake\n")
-    batch_summary.write("disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std;s_loss;s_loss_real;s_loss_fake\n")
+    # write header to summary files
+    header = "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;" \
+             "g_loss_final;alpha;r_loss_fake_std;g_loss_std;s_loss;s_loss_real;s_loss_fake\n"
+    epoch_summary.write(header)
+    batch_summary.write(header)
 
+    # training loop
     for epoch_idx in range(epochs):
         start = time.time()
 
+        # variables to sum losses over batches
         d_loss_total = 0.0
         d_loss_real_total = 0.0
         d_loss_fake_total = 0.0
@@ -261,8 +278,11 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
         s_loss_real_total = 0.0
         s_loss_fake_total = 0.0
 
+        # mini-batch training loop
         for batch_idx in range(batch_per_epoch):
+            # load iam images and labels
             image_batch, label_batch = next(dataset)
+            # load my written images
             my_img_batch = random.choices(my_imgs, k=batch_size)
 
             r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
@@ -272,13 +292,14 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
                            stylepromoter_optimizer, my_img_batch, batch_size, latent_dim, loss_fn, disc_iters, apply_gradient_balance,
                            random_words, bucket_size, gen_path)
 
+            # write statistics to batch summary
             batch_summary.write(str(d_loss) + ";" + str(d_loss_real) + ";" + str(d_loss_fake) + ";" +
                                 str(r_loss_real) + ";" + str(r_loss_fake) + ";" + str(r_loss_balanced) + ";" +
                                 str(g_loss) + ";" + str(g_loss_added) + ";" + str(g_loss_balanced) + ";" + str(g_loss_final) + ";" +
                                 str(alpha) + ";" + str(r_loss_fake_std) + ";" + str(g_loss_std) + str(s_loss) + ";" +
                                 str(s_loss_real) + ";" + str(s_loss_fake) + '\n')
 
-            # append to lists for epoch summary
+            # sum values for epoch summary
             d_loss_total += d_loss
             d_loss_real_total += d_loss_real
             d_loss_fake_total += d_loss_fake
@@ -296,6 +317,7 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
             s_loss_real_total += s_loss_real
             s_loss_fake_total += s_loss_fake
 
+        # write averages to epoch summary
         epoch_summary.write(str(d_loss_total / batch_per_epoch) + ";" + str(d_loss_real_total / batch_per_epoch) + ";" +
                             str(d_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_real_total / batch_per_epoch) + ";" +
                             str(r_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_balanced_total / batch_per_epoch) + ";" +
@@ -305,20 +327,29 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
                             str(g_loss_std_total / batch_per_epoch) + str(s_loss_total / batch_per_epoch) + ";" +
                             str(s_loss_real_total / batch_per_epoch) + ";" + str(s_loss_fake_total / batch_per_epoch) + ";" + '\n')
 
-        # Produce images for the GIF as we go
+        # produce images for visual evaluation
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
-
-        # Save the model every 5 epochs
-        if (epoch_idx + 1) % 5 == 0:
-            checkpoint.save(file_prefix=checkpoint_prefix)
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
+        # define sub-folders to save weights after each epoch
+        generator_epoch_save = os.path.join(generator_save_dir, str(epoch_idx + 1) + '/')
+        recognizer_epoch_save = os.path.join(recognizer_save_dir, str(epoch_idx + 1) + '/')
+
+        # create folders to save models
+        if not os.path.exists(generator_epoch_save):
+            os.makedirs(generator_epoch_save)
+        if not os.path.exists(recognizer_epoch_save):
+            os.makedirs(recognizer_epoch_save)
+
+        # save generator
+        generator.save_weights(generator_epoch_save + 'cktp-' + str(epoch_idx + 1))
+        # save recognizer
+        recognizer.save_weights(recognizer_epoch_save + 'cktp-' + str(epoch_idx + 1))
+
+    # close summary files after training
     batch_summary.close()
     epoch_summary.close()
-    # # save generator model
-
-    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 
 # Notice the use of `tf.function`
