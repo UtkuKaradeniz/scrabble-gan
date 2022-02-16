@@ -102,7 +102,7 @@ def main():
                                      style_promoter=style_promoter)
 
     # reuse this seed + labels overtime to visualize progress in the animated GIF
-    imgs_to_gan = validate_imgs[:batch_size]
+    imgs_to_gan = random.choices(validate_imgs, k=batch_size)
     seed = tf.stack(imgs_to_gan, axis=0)
     random_bucket_idx = random.randint(4, bucket_size - 1)
     labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(num_gen)], np.int32)
