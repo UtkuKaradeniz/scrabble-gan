@@ -5,6 +5,7 @@
 setup_optimizer.g_lr = 2E-4
 setup_optimizer.d_lr = 2E-4
 setup_optimizer.r_lr = 2E-4
+setup_optimizer.w_lr = 2E-4
 setup_optimizer.beta_1 = 0.0
 setup_optimizer.beta_2 = 0.999
 setup_optimizer.loss_fn = @hinge                #@not_saturating       #@hinge
