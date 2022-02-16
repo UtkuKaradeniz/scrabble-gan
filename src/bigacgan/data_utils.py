@@ -423,7 +423,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     recognizer_optimizer.apply_gradients(zip(gradients_of_recognizer, recognizer.trainable_variables))
 
     style_promoter.trainable = True
-    gradients_of_stylepromoter = style_tape.gradient(s_real_logits, style_promoter.trainable_variables)
+    gradients_of_stylepromoter = style_tape.gradient(s_loss, style_promoter.trainable_variables)
     stylepromoter_optimizer.apply_gradients(zip(gradients_of_stylepromoter, style_promoter.trainable_variables))
 
     # take disc_iters (default 1) D steps per G step
