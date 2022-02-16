@@ -8,7 +8,7 @@ setup_optimizer.r_lr = 5E-4
 # setup_optimizer.w_lr = 2E-4
 setup_optimizer.beta_1 = 0.0
 setup_optimizer.beta_2 = 0.999
-setup_optimizer.loss_fn = @not_saturating       #@not_saturating       #@hinge
+setup_optimizer.loss_fn = @hinge       #@not_saturating       #@hinge
 setup_optimizer.disc_iters=1                    #2
 setup_optimizer.apply_gradient_balance=0        #1      #0
 setup_optimizer.rmsprop=1                       #0      #1
@@ -27,9 +27,9 @@ shared_specs.my_disc=0                           #1
 
 # I/O and data structure
 io.base_path = '/scrabble-gan'
-io.checkpoint_dir = '/data/scrabble-gan-checkpoints/ex53/'
-io.gen_imgs_dir = '/data/output/ex53/'
-io.model_dir = '/data/scrabble-gan-model/ex53/'
+io.checkpoint_dir = '/data/scrabble-gan-checkpoints/ex52/'
+io.gen_imgs_dir = '/data/output/ex52/'
+io.model_dir = '/data/scrabble-gan-model/ex52/'
 
 # Dataset
 io.input_dim = (32, 160, 1)
