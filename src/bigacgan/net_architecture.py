@@ -398,7 +398,7 @@ def make_style_promoter(input_dim, kernel_reg, blocks_with_attention, vis_model=
     # Final part
     net = tf.nn.relu(net)
     net_h = layers.GlobalAveragePooling2D()(net)
-    out_logit = layers.Dense(units=1,
+    out_logit = layers.Dense(units=2,
                              use_bias=False,
                              activation='linear',
                              kernel_regularizer=kernel_reg,

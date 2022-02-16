@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
+def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits, s_real_logits_real_imgs):
     """
     Returns the discriminator and generator loss for Non-saturating loss; based on
     https://github.com/google/compare_gan/blob/master/compare_gan/gans/loss_lib.py
@@ -17,15 +17,16 @@ def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
                                                           name="cross_entropy_d_fake")
     d_loss = d_loss_real + d_loss_fake
 
-    s_loss_real = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_real_logits, labels=tf.ones_like(s_real_logits),
+    s_loss_real_myimgs = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_real_logits,
+                                                                 labels=tf.ones_like(s_fake_logits),
+                                                                 name="cross_entropy_s_fake")
+    s_loss_real_imgs = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_real_logits_real_imgs, labels=tf.ones_like(s_real_logits)*2,
                                                           name="cross_entropy_s_real")
-    s_loss_fake = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_fake_logits, labels=tf.zeros_like(s_fake_logits),
-                                                          name="cross_entropy_s_fake")
-    s_loss = s_loss_real + s_loss_fake
+    s_loss = s_loss_real_myimgs + s_loss_real_imgs
 
     g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=(d_fake_logits+s_fake_logits), labels=tf.ones_like(d_fake_logits+s_fake_logits),
                                                      name="cross_entropy_g")
-    return d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_loss_real, s_loss_fake
+    return d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_loss_real_myimgs, s_real_logits_real_imgs
 
 
 def hinge(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
