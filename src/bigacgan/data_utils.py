@@ -384,7 +384,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
                                     np.array([[sequence_length_real]] * batch_size_real)], training=True)
 
         # compute losses
-        d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_loss_myimgs, s_loss_realimgs = loss_fn(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits, s_real_logits_real_imgs)
+        d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_styleimgs_loss, s_iam_loss = loss_fn(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits, s_real_logits_real_imgs)
 
         # apply gradient balancing (optional)
         g_loss_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std = apply_gradient_balancing(r_fake_logits,
@@ -407,8 +407,8 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         d_loss_fake_mean = tf.reduce_mean(d_loss_fake)
         g_loss_final_mean = tf.reduce_mean(g_loss_final)
         s_loss_mean = tf.reduce_mean(s_loss)
-        s_loss_myimgs_mean = tf.reduce_mean(s_loss_myimgs)
-        s_loss_realimgs_mean = tf.reduce_mean(s_loss_realimgs)
+        s_loss_myimgs_mean = tf.reduce_mean(s_styleimgs_loss)
+        s_loss_realimgs_mean = tf.reduce_mean(s_iam_loss)
 
     tf.print('>%d, %d/%d, d=%.3f, d_real=%.3f, d_fake=%.3f, g_trad=%.3f, r_loss_fake=%.3f, g_loss=%.3f, r=%.3f, s=%.3f' % (
         epoch_idx + 1, batch_idx + 1, batch_per_epoch, d_loss_mean, d_loss_real_mean, d_loss_fake_mean, g_loss_mean,

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits, s_real_logits_real_imgs):
+def not_saturating(d_real_logits, d_fake_logits, s_styleimgs_logits, s_trainingimgs_logits, s_fake_logits):
     """
     Returns the discriminator and generator loss for Non-saturating loss; based on
     https://github.com/google/compare_gan/blob/master/compare_gan/gans/loss_lib.py
@@ -17,16 +17,22 @@ def not_saturating(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits, s
                                                           name="cross_entropy_d_fake")
     d_loss = d_loss_real + d_loss_fake
 
-    s_loss_real_myimgs = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_real_logits,
-                                                                 labels=tf.ones_like(s_fake_logits),
-                                                                 name="cross_entropy_s_fake")
-    s_loss_real_imgs = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_real_logits_real_imgs, labels=tf.ones_like(s_real_logits)*2,
-                                                          name="cross_entropy_s_real")
-    s_loss = s_loss_real_myimgs + s_loss_real_imgs
+    s_styleimgs_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_styleimgs_logits,
+                                                                 labels=tf.ones_like(s_styleimgs_logits),
+                                                                 name="cross_entropy_s_style")
+    s_iam_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=s_trainingimgs_logits,
+                                                               labels=tf.zeros_like(s_trainingimgs_logits),
+                                                               name="cross_entropy_s_iam")
+    s_loss = s_styleimgs_loss + s_iam_loss
 
-    g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=(d_fake_logits+s_fake_logits), labels=tf.ones_like(d_fake_logits+s_fake_logits),
-                                                     name="cross_entropy_g")
-    return d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_loss_real_myimgs, s_real_logits_real_imgs
+    g_loss_disc = tf.nn.sigmoid_cross_entropy_with_logits(logits=(d_fake_logits), labels=tf.ones_like(d_fake_logits),
+                                                          name="cross_entropy_g_disc")
+    g_loss_style = tf.nn.sigmoid_cross_entropy_with_logits(logits=(s_fake_logits), labels=tf.ones_like(s_fake_logits),
+                                                          name="cross_entropy_g_style")
+
+    g_loss = g_loss_disc + g_loss_style
+
+    return d_loss, d_loss_real, d_loss_fake, g_loss, s_loss, s_styleimgs_loss, s_iam_loss
 
 
 def hinge(d_real_logits, d_fake_logits, s_real_logits, s_fake_logits):
