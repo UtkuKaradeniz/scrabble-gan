@@ -234,7 +234,7 @@ def train(dataset, generator, discriminator, recognizer, style_promoter, composi
     if not os.path.exists(generator_save_dir):
         os.makedirs(generator_save_dir)
     if not os.path.exists(recognizer_save_dir):
-        os.makedirs(generator_save_dir)
+        os.makedirs(recognizer_save_dir)
 
     batch_per_epoch = int(buffer_size / batch_size) + 1
 
