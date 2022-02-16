@@ -102,15 +102,12 @@ def main():
                                      style_promoter=style_promoter)
 
     # reuse this seed + labels overtime to visualize progress in the animated GIF
-    seed = tf.random.normal([num_gen, latent_dim])
+    imgs_to_gan = validate_imgs[:batch_size]
+    seed = tf.stack(imgs_to_gan, axis=0)
     random_bucket_idx = random.randint(4, bucket_size - 1)
     labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(num_gen)], np.int32)
 
     # start training
-    # train(train_dataset, generator, discriminator, recognizer, gan, checkpoint, checkpoint_prefix, generator_optimizer,
-    #       discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
-    #       latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
-    #
     train(train_dataset, generator, discriminator, recognizer, style_promoter, gan, checkpoint, checkpoint_prefix, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, stylepromoter_optimizer, train_imgs, [seed, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
