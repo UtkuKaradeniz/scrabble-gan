@@ -35,10 +35,9 @@ io.model_dir = 'data/scrabble-gan-model/ex53/'
 
 # Dataset
 io.input_dim = (32, 160, 1)
-# io.buf_size = 80377
 io.n_classes = 52
 io.seq_len = None
-io.bucket_size = 10
+io.bucket_size = 16
 io.mode = 'train'                               # 'train' / 'test' / 'validate'
 io.raw_dir = 'data/IAM_mygan/img/'
 io.read_dir = 'data/IAM_mygan/words-Reading'

@@ -100,7 +100,7 @@ def main():
     # generate as many styles as needed
     seeds = [tf.random.normal([1, latent_dim]) for _ in range(num_style)]
     # choose random words with random lengths
-    random_bucket_idx = np.random.randint(low=3, high=bucket_size, size=num_gen)
+    random_bucket_idx = np.random.randint(low=3, high=12, size=num_gen)
     labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
     train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,

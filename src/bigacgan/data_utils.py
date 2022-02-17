@@ -447,7 +447,7 @@ def generate_and_save_images(model, epoch, test_input, gen_path, char_vector):
             axs[i, j].imshow(predictions[(i * len(labels)) + j][0, :, :, 0], cmap='gray')
             # write labels once
             if i == 0:
-                axs[i, j].text(0, -3, "".join([char_vector[label] for label in labels[j]]), fontsize='xx-small')
+                axs[i, j].text(-5, -5, "".join([char_vector[label] for label in labels[j]]), fontsize='xx-small')
             axs[i, j].axis('off')
 
     if not os.path.exists(gen_path):
