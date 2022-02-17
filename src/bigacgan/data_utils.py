@@ -9,6 +9,7 @@ import tensorflow as tf
 import imageio
 import matplotlib.pyplot as plt
 import random
+from src.bigacgan.net_architecture import ctc_loss
 
 
 def return_sample_size(reading_dir, bucket_size):
@@ -177,8 +178,15 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     print('no. batch_per_epoch:  ', batch_per_epoch)
     print('epoch size:           ', epochs)
 
-    generate_and_save_images(generator, 0 + 1, seed_labels, gen_path, char_vector)
-    exit(-1)
+    # define checkpoint save paths
+    generator_save_dir = os.path.join(checkpoint, 'generator/')
+    recognizer_save_dir = os.path.join(checkpoint, 'recognizer/')
+
+    # create folders to save models
+    if not os.path.exists(generator_save_dir):
+        os.makedirs(generator_save_dir)
+    if not os.path.exists(recognizer_save_dir):
+        os.makedirs(recognizer_save_dir)
 
     print('training...')
     batch_summary = open(gen_path + "batch_summary.txt", "w")
@@ -231,19 +239,31 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
-        epoch_summary.write(str(d_loss_total / batch_per_epoch) + ";" + str(d_loss_real_total / batch_per_epoch) + ";" +
-                            str(d_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_real_total / batch_per_epoch) + ";" +
-                            str(r_loss_fake_total / batch_per_epoch) + ";" + str(r_loss_balanced_total / batch_per_epoch) + ";" +
-                            str(g_loss_total / batch_per_epoch) + ";" + str(g_loss_added_total / batch_per_epoch) + ";" +
-                            str(g_loss_balanced_total / batch_per_epoch) + ";" + str(g_loss_final_total / batch_per_epoch) + ";" +
-                            str(alphas / batch_per_epoch) + ";" + str(r_loss_fake_std_total / batch_per_epoch) + ";" + str(g_loss_std_total / batch_per_epoch) + '\n')
+        divider = batch_per_epoch
+        epoch_summary.write(str(d_loss_total / divider) + ";" + str(d_loss_real_total / divider) + ";" +
+                            str(d_loss_fake_total / divider) + ";" + str(r_loss_real_total / divider) + ";" +
+                            str(r_loss_fake_total / divider) + ";" + str(r_loss_balanced_total / divider) + ";" +
+                            str(g_loss_total / divider) + ";" + str(g_loss_added_total / divider) + ";" +
+                            str(g_loss_balanced_total / divider) + ";" + str(g_loss_final_total / divider) + ";" +
+                            str(alphas / divider) + ";" + str(r_loss_fake_std_total / divider) + ";" + str(g_loss_std_total / divider) + '\n')
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
 
-        # Save the model every 5 epochs
-        if (epoch_idx + 1) % 5 == 0:
-            checkpoint.save(file_prefix=checkpoint_prefix)
+        # define sub-folders to save weights after each epoch
+        generator_epoch_save = os.path.join(generator_save_dir, str(epoch_idx + 1) + '/')
+        recognizer_epoch_save = os.path.join(recognizer_save_dir, str(epoch_idx + 1) + '/')
+
+        # create folders to save models
+        if not os.path.exists(generator_epoch_save):
+            os.makedirs(generator_epoch_save)
+        if not os.path.exists(recognizer_epoch_save):
+            os.makedirs(recognizer_epoch_save)
+
+        # save generator
+        generator.save_weights(generator_epoch_save + 'cktp-' + str(epoch_idx + 1))
+        # save recognizer
+        recognizer.save_weights(recognizer_epoch_save + 'cktp-' + str(epoch_idx + 1))
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
@@ -303,8 +323,9 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
 
         # compute R(real)
         inp_len_real = -1 + sequence_length_real * 4
-        r_real_logits = recognizer([images, labels, np.array([[inp_len_real]] * batch_size_real),
-                                    np.array([[sequence_length_real]] * batch_size_real)], training=True)
+        time_steps = recognizer(images, training=True)
+        r_real_logits = ctc_loss(labels, time_steps, np.array([[inp_len_real]] * batch_size_real),
+                                 np.array([[sequence_length_real]] * batch_size_real))
 
         # compute losses
         d_loss, d_loss_real, d_loss_fake, g_loss = loss_fn(d_real_logits, d_fake_logits)
