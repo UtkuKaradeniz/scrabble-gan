@@ -64,12 +64,14 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
     for idx, file in enumerate(listOfFiles):
 
         if file.endswith(".png"):
-
+            print(file)
             # get file name and its corresponding transcription
             img_nm = os.path.basename(file)
+            print(img_nm)
             if img_nm not in transcriptions:
                 continue
             transcription = transcriptions[img_nm]
+            print(transcription)
 
             # filter samples with chars other a-zA-Z
             if transcription.isalpha() and len(transcription) > 0:
