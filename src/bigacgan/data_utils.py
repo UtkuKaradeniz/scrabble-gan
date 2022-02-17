@@ -12,19 +12,23 @@ import random
 from src.bigacgan.net_architecture import ctc_loss
 
 
+def write_words(reading_dir, words, mode):
+    f = open(reading_dir + mode + '-words', 'w', encoding='utf8')
+    no_duplicates = list(dict.fromkeys(words))
+    for word in no_duplicates:
+        f.write("%s\n" % word)
+    f.close()
+
+
 def return_sample(reading_dir, bucket_size):
     words = []
     number_samples = 0
 
-    print("return_sample_size")
     # (1) read buckets into memory
     for i in range(1, bucket_size + 1, 1):
         reading_dir_bucket = os.path.join(reading_dir, str(i) + '/')
         file_list = os.listdir(reading_dir_bucket)
         file_list = [fi for fi in file_list if fi.endswith(".txt")]
-        print(reading_dir)
-        print(reading_dir_bucket)
-        print(file_list)
         for file in file_list:
             with open(reading_dir_bucket + file, 'r', encoding='utf8') as f:
                 # 'auto' -> [0, 20, 19, 14]

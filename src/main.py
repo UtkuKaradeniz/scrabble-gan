@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
-from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_sample
+from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_sample, write_words
 from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator
 from src.bigacgan.net_architecture import make_recognizer, make_my_recognizer, make_gan
 from src.bigacgan.net_loss import hinge, not_saturating
@@ -71,10 +71,10 @@ def main():
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
     buf_size, words = return_sample(reading_dir=read_dir, bucket_size=bucket_size)
-    print(buf_size)
-    print(len(words))
-    assert buf_size > 0 and len(words) > 0
-    exit(-1)
+    write_words(read_dir, words, mode)
+
+    assert 0 < buf_size == len(words) and len(words) > 0
+
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
     if my_disc:
