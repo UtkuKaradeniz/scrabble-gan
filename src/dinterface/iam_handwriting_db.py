@@ -34,9 +34,6 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
         listOfFiles += [os.path.join(dirpath, file) for file in filenames]
 
     # (2)get file transcriptions (stored in words.txt)
-    print(input_dir)
-    print(input_dir.rstrip('img/'))
-    print(os.path.join(input_dir.rstrip('img/'), '/gt/words_training.txt'))
     if mode == 'train':
         transcription_file = input_dir.rstrip('img/') + '/gt/words_training.txt'
     if mode == 'test':
