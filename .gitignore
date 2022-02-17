@@ -8,3 +8,7 @@ src/scrabble_gan.gin
 *.out
 src/bigacgan/checkpoint
 src/bigacgan/cktp*.index
+src/foo.png
+data.data-00000-of-00001
+checkpoint
+data.index
