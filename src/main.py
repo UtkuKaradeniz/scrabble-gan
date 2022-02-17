@@ -1,5 +1,5 @@
 import sys
-sys.path.extend(['C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\'])
+sys.path.extend(['/scrabble-gan/'])
 
 import os
 import random
@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
-from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_sample_size
+from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_sample
 from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator
 from src.bigacgan.net_architecture import make_recognizer, make_my_recognizer, make_gan
 from src.bigacgan.net_loss import hinge, not_saturating
