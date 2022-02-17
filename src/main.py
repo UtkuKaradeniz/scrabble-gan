@@ -85,10 +85,10 @@ def main():
         discriminator = make_discriminator(in_dim, kernel_reg, d_bw_attention)
     if my_rec:
         print("using my recognizer")
-        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1, restore=False)
+        recognizer = make_my_recognizer(in_dim, n_classes + 1, restore=False)
     else:
         print("using scrabbleGAN recognizer")
-        recognizer = make_recognizer(in_dim, seq_len, n_classes + 1)
+        recognizer = make_recognizer(in_dim, n_classes + 1)
 
     # build composite model (update G through composite model)
     gan = make_gan(generator, discriminator, recognizer)

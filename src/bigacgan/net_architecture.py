@@ -6,7 +6,7 @@ from src.bigacgan.arch_ops import NonLocalBlock, SpatialEmbedding
 from src.bigacgan.resnet_ops import ResNetBlockUp, ResNetBlockDown
 
 
-def make_recognizer(input_dim, sequence_length, output_classes, vis_model=True):
+def make_recognizer(input_dim, output_classes, vis_model=True):
     """
     Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
 
@@ -54,24 +54,7 @@ def make_recognizer(input_dim, sequence_length, output_classes, vis_model=True):
     # Per frame predictions (skip RNN layers -> avoid learning implicit language model)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(map_to_seq)
 
-    def ctc_loss(args):
-        """
-        to better understand the meaning of the params:
-        https://www.tensorflow.org/api_docs/python/tf/keras/backend/ctc_batch_cost?version=stable
-        :return:
-        """
-        y_true, y_pred, input_length, label_length = args
-        return tf.keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
-
-    labels = layers.Input(name='y_true', shape=[sequence_length], dtype='float32')
-    input_length = layers.Input(shape=[1], dtype=tf.int32, name='input_length')
-    label_length = layers.Input(name='label_length', shape=[1], dtype=tf.int32)
-
-    # ========================================== Transcription layer ===================================#
-    loss_out = tf.keras.layers.Lambda(ctc_loss, output_shape=(1,), name='ctc')(
-        [labels, per_frame_predictions, input_length, label_length])
-
-    model = tf.keras.Model(inputs=[inp_imgs, labels, input_length, label_length], outputs=loss_out)
+    model = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
 
     if vis_model:
         model.summary()
@@ -158,7 +141,7 @@ def my_recognizer(input_dim, output_classes, restore=False):
     return model_to_load
 
 
-def make_my_recognizer(input_dim, sequence_length, output_classes, restore=False, vis_model=True):
+def make_my_recognizer(input_dim, output_classes, restore=False, vis_model=True):
     """
     Build (fully convolutional) CRNN network based on https://arxiv.org/abs/1507.05717
 
