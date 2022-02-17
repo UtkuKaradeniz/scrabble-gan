@@ -73,7 +73,8 @@ def main():
 
     # save test_words for inference
     test_words_save = raw_dir.rstrip('img/')
-    open(test_words_save + "test_words.txt", 'w').write(''.join(test_words))
+    print(test_words)
+    open(test_words_save + "test_words.txt", 'w').write(''.join(test_words[0]))
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
