@@ -66,19 +66,7 @@ def main():
         init_reading(raw_dir, read_dir, in_dim, bucket_size, mode)
 
     # load random words into memory (used for word generation by G)
-    random_words = load_random_word_list(read_dir, bucket_size, char_vec)
-    split = int(len(random_words)*0.95)
-    v_words = [bucket[:split] for bucket in random_words]
-    t_words = [bucket[split:] for bucket in random_words]
-
-    print(t_words)
-    validate_words = [char_vec.index(char) for word in v_words for char in word]
-    test_words = [char_vec.index(char) for word in t_words for char in word]
-    print(t_words)
-    # save test_words for inference
-    test_words_save = raw_dir.rstrip('img/')
-
-    open(test_words_save + "test_words.txt", 'w').write(''.join(test_words[0]))
+    validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)

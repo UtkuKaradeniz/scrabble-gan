@@ -545,18 +545,28 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     :return:
     """
 
-    random_words = []
+    validate_words = []
+    test_words = []
     for i in range(bucket_size):
-        random_words.append([])
+        validate_words.append([])
+        test_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
-    with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
+    with open(os.path.join(random_words_path, 'brown_random_valid_1000.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
             bucket = len(word)
 
             if bucket <= bucket_size and word.isalpha():
-                random_words[bucket - 1].append(word)
+                validate_words[bucket - 1].append(word)
 
-    return random_words
+    with open(os.path.join(random_words_path, 'brown_random_test_19000.txt'), 'r') as fi_random_word_list:
+        for word in fi_random_word_list:
+            word = word.strip()
+            bucket = len(word)
+
+            if bucket <= bucket_size and word.isalpha():
+                test_words[bucket - 1].append([char_vector.index(char) for char in word])
+
+    return validate_words, test_words
 
