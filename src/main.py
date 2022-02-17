@@ -71,6 +71,9 @@ def main():
     validate_words = random_words[:split]
     test_words = random_words[split:]
 
+    validate_words = [char_vec.index(char) for word in validate_words for char in word]
+    test_words = [char_vec.index(char) for word in test_words for char in word]
+
     # save test_words for inference
     test_words_save = raw_dir.rstrip('img/')
     print(test_words)

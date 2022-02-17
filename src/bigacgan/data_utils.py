@@ -550,14 +550,13 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
         random_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
-    print(random_words_path)
     with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
             bucket = len(word)
 
             if bucket <= bucket_size and word.isalpha():
-                random_words[bucket - 1].append([char_vector.index(char) for char in word])
+                random_words[bucket - 1].append(word)
 
     return random_words
 
