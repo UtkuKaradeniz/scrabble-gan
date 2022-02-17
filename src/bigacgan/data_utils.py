@@ -494,9 +494,8 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     random_words = []
     for i in range(bucket_size):
         random_words.append([])
-    # TODO: remove
-    # random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
-    random_words_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\'
+
+    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
     with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
