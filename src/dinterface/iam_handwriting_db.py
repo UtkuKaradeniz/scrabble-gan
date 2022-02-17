@@ -83,7 +83,6 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
                     # compute transcription length and save to corresponding output bucket
                     transcription_length = len(transcription)
                     output_bucket = os.path.join(output_dir, str(transcription_length))
-                    print(output_bucket)
 
                     if transcription_length <= bucket_size:
                         cv2.imwrite(os.path.join(output_bucket, img_nm), resized_img)

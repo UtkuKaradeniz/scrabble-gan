@@ -506,6 +506,7 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
             bucket = len(word)
 
             if bucket <= bucket_size:
+                print(word)
                 random_words[bucket - 1].append([char_vector.index(char) for char in word])
 
     return random_words
