@@ -3,7 +3,7 @@ import os
 from collections import Counter
 
 
-def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucket_size):
+def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucket_size, mode):
     """
     Convert iamDB dataset to "GAN format"
 
@@ -26,15 +26,22 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
     if not os.path.exists(output_dir):
         for i in range(bucket_size):
             # create buckets (in this work, words longer than 10 chars are for the sake of simplicity ignored)
-            os.makedirs(output_dir + str(i + 1) + '/')
+            os.makedirs(output_dir + '\\' + str(i + 1) + '\\')
 
-    # (1) get list of all files in directory tree res/data/iamDB/words/
+    # (1) get list of all files in directory tree res/data/iamDB/img/
     listOfFiles = list()
     for (dirpath, dirnames, filenames) in os.walk(input_dir):
         listOfFiles += [os.path.join(dirpath, file) for file in filenames]
 
     # (2)get file transcriptions (stored in words.txt)
-    transcription_file = input_dir.rstrip('img\\') + '\\gt\\words.txt'
+    if mode == 'train':
+        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_training.txt')
+    if mode == 'test':
+        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_testset.txt')
+    if mode == 'valid1':
+        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_validationset1.txt')
+    if mode == 'valid2':
+        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_validationset2.txt')
     transcriptions = {}
 
     with open(transcription_file, 'r', encoding="utf8") as fi:
@@ -51,15 +58,17 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
                     transcriptions[file_nm] = '-1'
 
     print('size of iamDB words: {}'.format(len(transcriptions)))
+    print(listOfFiles)
 
     # (3) process/ filter images along its respective transcriptions
     for idx, file in enumerate(listOfFiles):
 
         if file.endswith(".png"):
 
-            print(file)
             # get file name and its corresponding transcription
             img_nm = os.path.basename(file)
+            if img_nm not in transcriptions:
+                continue
             transcription = transcriptions[img_nm]
 
             # filter samples with chars other a-zA-Z
@@ -74,7 +83,7 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
 
                     # compute transcription length and save to corresponding output bucket
                     transcription_length = len(transcription)
-                    output_bucket = output_dir + str(transcription_length) + '/'
+                    output_bucket = os.path.join(output_dir, str(transcription_length))
                     print(output_bucket)
 
                     if transcription_length <= bucket_size:
@@ -88,6 +97,6 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
                 except:
                     print('error at: {}'.format(file))
 
-    # (4) compute meta data (such as transcription-lenght distribution across iamDB words)
+    # (4) compute meta data (such as transcription-length distribution across iamDB words)
     print('size of valid iamDB words: {}'.format(valid_samples))
     print(Counter(transcription_lengths))

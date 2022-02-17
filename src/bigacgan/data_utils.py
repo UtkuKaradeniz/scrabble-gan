@@ -11,6 +11,20 @@ import matplotlib.pyplot as plt
 import random
 
 
+def return_sample_size(reading_dir, bucket_size):
+
+    number_samples = 0
+
+    # (1) read buckets into memory
+    for i in range(1, bucket_size + 1, 1):
+        reading_dir_bucket = reading_dir + str(i) + '/'
+        file_list = os.listdir(reading_dir_bucket)
+        file_list = [fi for fi in file_list if fi.endswith(".txt")]
+        number_samples += len(file_list)
+
+    return number_samples
+
+
 def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_size):
     """
     load data into tensor (python generator)
@@ -163,6 +177,9 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     print('no. batch_per_epoch:  ', batch_per_epoch)
     print('epoch size:           ', epochs)
 
+    generate_and_save_images(generator, 0 + 1, seed_labels, gen_path, char_vector)
+    exit(-1)
+
     print('training...')
     batch_summary = open(gen_path + "batch_summary.txt", "w")
     epoch_summary = open(gen_path + "epoch_summary.txt", "w")
@@ -232,11 +249,6 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 
     batch_summary.close()
     epoch_summary.close()
-    # # save generator model
-    # if not os.path.exists(model_path):
-    #     os.makedirs(model_path)
-    #
-    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 
 # Notice the use of `tf.function`
@@ -373,21 +385,41 @@ def generate_and_save_images(model, epoch, test_input, gen_path, char_vector):
     :return:
     """
 
-    # Notice `training` is set to False.
-    # This is so all layers run in inference mode (batchnorm).
-    predictions = model(test_input, training=False)
-    predictions = (predictions + 1) / 2.0
-    labels = test_input[1]
+    seeds, labels = test_input
+    predictions = []
+    for i in range(len(seeds)):
+        # get a seed/style
+        seed = seeds[i]
+        # generate all labels for the style
+        for j in range(len(labels)):
+            label = tf.convert_to_tensor(labels[j])
+            label = tf.expand_dims(label, axis=0)
+            # generate image with the seed and label
+            generated_imgs = model([seed, label], training=False)
+            # scaling change: (-1, 1) -> (0, 1)
+            generated_imgs = (generated_imgs + 1) / 2.0
+            predictions.append(generated_imgs)
 
-    for i in range(predictions.shape[0]):
-        plt.subplot(4, 4, i + 1)
-        plt.imshow(predictions[i, :, :, 0], cmap='gray')
-        plt.text(0, -1, "".join([char_vector[label] for label in labels[i]]))
-        plt.axis('off')
+    # grid to scale images with different width
+    grid = [pred.shape[-2] // 16 for pred in predictions]
+    grid = grid[:len(labels)]
+
+    sub_plot_x = len(seeds)
+    sub_plot_y = len(labels)
+    f, axs = plt.subplots(sub_plot_x, sub_plot_y, gridspec_kw={'width_ratios': grid}, dpi=300)
+    for i in range(len(seeds)):
+        for j in range(len(labels)):
+            # write images
+            axs[i, j].imshow(predictions[(i * len(labels)) + j][0, :, :, 0], cmap='gray')
+            # write labels once
+            if i == 0:
+                axs[i, j].text(0, -3, "".join([char_vector[label] for label in labels[j]]), fontsize='xx-small')
+            axs[i, j].axis('off')
 
     if not os.path.exists(gen_path):
         os.makedirs(gen_path)
-    plt.savefig(gen_path + 'image_at_epoch_{:04d}.png'.format(epoch))
+
+    plt.savefig(os.path.join(gen_path, 'image_at_epoch_{:04d}.png'.format(epoch)))
 
 
 def make_gif(gen_path):
@@ -432,8 +464,9 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     random_words = []
     for i in range(bucket_size):
         random_words.append([])
-
-    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
+    # TODO: remove
+    # random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
+    random_words_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\'
     with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()

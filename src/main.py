@@ -9,8 +9,9 @@ import numpy as np
 import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
-from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, load_style_input
-from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator, make_recognizer, make_my_recognizer, make_gan, make_style_extractor
+from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_sample_size
+from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator
+from src.bigacgan.net_architecture import make_recognizer, make_my_recognizer, make_gan
 from src.bigacgan.net_loss import hinge, not_saturating
 
 gin.external_configurable(hinge)
@@ -30,42 +31,46 @@ def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply
         recognizer_optimizer = tf.keras.optimizers.RMSprop(learning_rate=r_lr)
     else:
         recognizer_optimizer = tf.keras.optimizers.Adam(learning_rate=r_lr, beta_1=beta_1, beta_2=beta_2)
-    return generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance
+    return generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, \
+           apply_gradient_balance
 
 
 @gin.configurable('shared_specs')
-def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention, my_rec, my_disc):
-    return epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention, my_rec, my_disc
+def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_style, num_gen, kernel_reg, g_bw_attention,
+                     d_bw_attention, my_rec, my_disc):
+    return epochs, batch_size, latent_dim, embed_y, num_style, num_gen, kernel_reg, g_bw_attention, d_bw_attention, \
+           my_rec, my_disc
 
 
 @gin.configurable('io')
-def setup_io(base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, buf_size, n_classes,
-             seq_len, char_vec, bucket_size):
+def setup_io(base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, n_classes, seq_len,
+             char_vec, bucket_size, mode):
     gen_path = base_path + gen_imgs_dir
     ckpt_path = base_path + checkpoint_dir
     m_path = base_path + model_dir
     raw_dir = base_path + raw_dir
-    read_dir = base_path + read_dir
-    return input_dim, buf_size, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec
+    read_dir = base_path + read_dir + '-' + mode + '/'
+    return input_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode
 
 
 def main():
     # init params
     gin.parse_config_file('scrabble_gan.gin')
-    epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention, my_rec, my_disc = get_shared_specs()
-    in_dim, buf_size, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec = setup_io()
+    epochs, batch_size, latent_dim, embed_y, num_style, num_gen, kernel_reg, g_bw_attention, d_bw_attention, \
+    my_rec, my_disc = get_shared_specs()
+    in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode = setup_io()
 
     # convert IAM Handwriting dataset (words) to GAN format
     if not os.path.exists(read_dir):
         print('converting iamDB-Dataset to GAN format...')
-        init_reading(raw_dir, read_dir, in_dim, bucket_size)
+        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode)
 
     # load random words into memory (used for word generation by G)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
-    # style_input = load_style_input(in_dim, batch_size, bucket_size)
+    buf_size = return_sample_size(reading_dir=read_dir, bucket_size=bucket_size)
 
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
@@ -77,41 +82,26 @@ def main():
         discriminator = make_discriminator(in_dim, kernel_reg, d_bw_attention)
     if my_rec:
         print("using my recognizer")
-        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 2, restore=True)
+        recognizer = make_my_recognizer(in_dim, seq_len, n_classes + 1, restore=False)
     else:
         print("using scrabbleGAN recognizer")
         recognizer = make_recognizer(in_dim, seq_len, n_classes + 1)
 
-    # style_extractor = make_style_extractor(gen_path, in_dim, kernel_reg, d_bw_attention)
-
     # build composite model (update G through composite model)
-    # gan = make_gan(generator, discriminator, recognizer, style_extractor, gen_path)
     gan = make_gan(generator, discriminator, recognizer)
 
     # init optimizer for both generator, discriminator and recognizer
     generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
 
-    # # purpose: save and restore models
-    checkpoint_prefix = os.path.join(ckpt_path, "ckpt")
-    checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
-                                     discriminator_optimizer=discriminator_optimizer,
-                                     recognizer_optimizer=recognizer_optimizer,
-                                     generator=generator,
-                                     discriminator=discriminator,
-                                     recognizer=recognizer)
+    ### choose seed and labels to generate images
+    # generate as many styles as needed
+    seeds = [tf.random.normal([1, latent_dim]) for _ in range(num_style)]
+    # choose random words with random lengths
+    random_bucket_idx = np.random.randint(low=3, high=bucket_size, size=num_gen)
+    labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
-    # reuse this seed + labels overtime to visualize progress in the animated GIF
-    seed = tf.random.normal([num_gen, latent_dim])
-    random_bucket_idx = random.randint(4, bucket_size - 1)
-    labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(num_gen)], np.int32)
-
-    # start training
-    # train(train_dataset, generator, discriminator, recognizer, gan, checkpoint, checkpoint_prefix, generator_optimizer,
-    #       discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
-    #       latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
-    #
-    train(train_dataset, generator, discriminator, recognizer, gan, checkpoint, checkpoint_prefix, generator_optimizer,
-          discriminator_optimizer, recognizer_optimizer, [seed, labels], buf_size, batch_size, epochs, m_path,
+    train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,
+          discriminator_optimizer, recognizer_optimizer, [seeds, labels], buf_size, batch_size, epochs, m_path,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec)
 
     # use imageio to create an animated gif using the images saved during training.
