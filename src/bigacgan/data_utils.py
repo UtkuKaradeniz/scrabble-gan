@@ -552,7 +552,7 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
         test_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
-    with open(os.path.join(random_words_path, 'brown_random_valid_1000.txt'), 'r') as fi_random_word_list:
+    with open(os.path.join(random_words_path, 'brown_random_vaild_1000.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
             bucket = len(word)
