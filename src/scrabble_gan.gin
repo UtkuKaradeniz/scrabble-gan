@@ -27,10 +27,10 @@ shared_specs.my_rec=1                           #1
 shared_specs.my_disc=0                          #1
 
 # I/O and data structure
-io.base_path = '/scrabble-gan'
-io.checkpoint_dir = '/data/scrabble-gan-checkpoints/ex53/'
-io.gen_imgs_dir = '/data/output/ex39/'
-io.model_dir = '/data/scrabble-gan-model/ex53/'
+io.base_path = '/scrabble-gan/'
+io.checkpoint_dir = 'data/scrabble-gan-checkpoints/ex53/'
+io.gen_imgs_dir = 'data/output/ex39/'
+io.model_dir = 'data/scrabble-gan-model/ex53/'
 
 # Dataset
 io.input_dim = (32, 160, 1)
@@ -39,6 +39,6 @@ io.n_classes = 52
 io.seq_len = None
 io.bucket_size = 10
 io.mode = 'train'                               # 'train' / 'test' / 'validate'
-io.raw_dir = '/data/IAM_mygan/img/'
-io.read_dir = '/data/IAM_mygan/words-Reading'
+io.raw_dir = 'data/IAM_mygan/img/'
+io.read_dir = 'data/IAM_mygan/words-Reading'
 io.char_vec = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'

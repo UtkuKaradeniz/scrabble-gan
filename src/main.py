@@ -1,5 +1,5 @@
 import sys
-sys.path.extend(['/scrabble-gan/'])
+sys.path.extend(['C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\'])
 
 import os
 import random
@@ -61,6 +61,8 @@ def main():
     in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode = setup_io()
 
     # convert IAM Handwriting dataset (words) to GAN format
+    print(read_dir)
+    print(os.path.exists(read_dir))
     if not os.path.exists(read_dir):
         print('converting iamDB-Dataset to GAN format...')
         init_reading(raw_dir, read_dir, in_dim, bucket_size, mode)
@@ -70,8 +72,11 @@ def main():
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
-    buf_size = return_sample_size(reading_dir=read_dir, bucket_size=bucket_size)
-
+    buf_size, words = return_sample(reading_dir=read_dir, bucket_size=bucket_size)
+    print(buf_size)
+    print(words)
+    assert buf_size > 0 and len(words) > 0
+    exit(-1)
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
     if my_disc:
