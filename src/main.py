@@ -68,8 +68,8 @@ def main():
     # load random words into memory (used for word generation by G)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
     split = int(len(random_words)*0.95)
-    v_words = random_words[:split]
-    t_words = random_words[split:]
+    v_words = [bucket[:split] for bucket in random_words]
+    t_words = [bucket[split:] for bucket in random_words]
 
     print(t_words)
     validate_words = [char_vec.index(char) for word in v_words for char in word]
