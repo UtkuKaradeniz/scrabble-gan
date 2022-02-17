@@ -105,7 +105,7 @@ def main():
 
     train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, [seeds, labels], buf_size, batch_size, epochs, m_path,
-          latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec,
+          latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, validate_words, bucket_size, char_vec,
           validate_words)
 
     # use imageio to create an animated gif using the images saved during training.
