@@ -38,13 +38,13 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
     print(input_dir.rstrip('img/'))
     print(os.path.join(input_dir.rstrip('img/'), '/gt/words_training.txt'))
     if mode == 'train':
-        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_training.txt')
+        transcription_file = input_dir.rstrip('img/') + '/gt/words_training.txt'
     if mode == 'test':
-        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_testset.txt')
+        transcription_file = input_dir.rstrip('img/') + '/gt/words_testset.txt'
     if mode == 'valid1':
-        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_validationset1.txt')
+        transcription_file = input_dir.rstrip('img/') + '/gt/words_validationset1.txt'
     if mode == 'valid2':
-        transcription_file = os.path.join(input_dir.rstrip('img/'), '/gt/words_validationset2.txt')
+        transcription_file = input_dir.rstrip('img/') + '/gt/words_validationset2.txt'
     transcriptions = {}
 
     with open(transcription_file, 'r', encoding="utf8") as fi:
