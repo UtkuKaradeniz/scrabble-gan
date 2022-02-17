@@ -5,6 +5,7 @@ import time
 import cv2
 import numpy as np
 import tensorflow as tf
+import editdistance
 
 import imageio
 import matplotlib.pyplot as plt
@@ -112,51 +113,70 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
-def load_style_input(input_dim, batch_size, bucket_size):
-    """
-    load data into tensor (python generator)
+def validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim):
+    # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
+    """Feed a batch into the NN to recognize the texts."""
+    num_batch_elements = len(validate_words) // batch_size
+    labels = list(char_vector)
+    index2letter = {n: label for n, label in enumerate(labels)}
+    print(index2letter)
 
-    (1) read buckets into memory
-    (2) compute bucket_weights
-    (3) create python generator
+    num_char_err = 0
+    num_char_total = 0
+    num_word_ok = 0
+    num_word_total = 0
 
-    :param input_dim:
-    :param batch_size:
-    :param reading_dir:
-    :param char_vector:
-    :param bucket_size:
-    :return:
-    """
+    for i in range(len(num_batch_elements)):
+        # generate latent points + random sequence labels from word list
+        noise = tf.random.normal([batch_size, latent_dim])
+        random_bucket_idx = random.randint(0, bucket_size - 1)
+        fake_labels = np.array([random.choice(validate_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
 
-    h, w, c = input_dim
+        generated_imgs = generator([noise, fake_labels], training=False)
 
-    number_samples = 0
+        # calculate time-steps
+        time_steps = recognizer(generated_imgs, training=False)
+        sequence_length_fake = random_bucket_idx + 1
+        inp_len_fake = -1 + sequence_length_fake * 4
 
-    imgs = []
+        # decode tim-steps
+        decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
+                                                   input_length=np.array([[inp_len_fake]] * batch_size), greedy=False)
 
-    reading_dir_bucket = os.path.join('../../data/', 'Utku-40/')
-    file_list = os.listdir(reading_dir_bucket)
+        texts_int, texts_string = [], []
+        # convert decoded to string
+        decode = [[[int(p) for p in x if p != -1] for x in y] for y in decoded]
+        texts_int.extend(np.swapaxes(decode, 0, 1))
+        for text in texts_int:
+            # get list object
+            text = text[0]
+            # vector to chars
+            ll = [index2letter[i - 1] for i in text]
+            # chars to words
+            texts_string.append(''.join(ll))
 
-    for file in file_list:
-        with open(reading_dir_bucket + file, 'r', encoding='utf8') as f:
-            img = cv2.imread(os.path.join(reading_dir_bucket, os.path.splitext(file)[0] + '.png'), 0)
-            imgs.append(img)
-            number_samples += 1
+        # calculate error rates
+        for i in range(len(texts_string)):
+            num_word_ok += 1 if fake_labels[i] == texts_string[i] else 0
+            num_word_total += 1
+            dist = editdistance.eval(texts_string[i], fake_labels[i])
+            num_char_err += dist
+            num_char_total += len(fake_labels[i])
+            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + fake_labels[i] + '"', '->',
+                  '"' + texts_string[i] + '"')
 
-    # convert to numpy array
-    image_batch = np.array(imgs).astype('float32')
+    # print validation result
+    char_error_rate = num_char_err / num_char_total
+    word_accuracy = num_word_ok / num_word_total
+    print(f'Character error rate: {char_error_rate * 100.0}%. Word accuracy: {word_accuracy * 100.0}%.')
 
-    # normalize images to [-1, 1]
-    image_batch = image_batch.reshape(-1, h, int((h / 2) * bucket_size), c)
-    image_batch = (image_batch - 127.5) / 127.5
-
-    return image_batch
+    return char_error_rate, word_accuracy
 
 
 def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix,
           generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, buffer_size, batch_size,
           epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words,
-          bucket_size, char_vector):
+          bucket_size, char_vector, validate_words):
     """
     Whole training procedure
 
@@ -190,6 +210,9 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     print('batch size:           ', batch_size)
     print('no. batch_per_epoch:  ', batch_per_epoch)
     print('epoch size:           ', epochs)
+
+    best_char_error_rate = float('inf')  # best valdiation character error rate
+    no_improvement_since = 0  # number of epochs no improvement of character error rate occurred
 
     # define checkpoint save paths
     generator_save_dir = os.path.join(checkpoint, 'generator/')
@@ -230,12 +253,22 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             image_batch, label_batch = next(dataset)
 
             r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
-            d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std = train_step(epoch_idx, batch_idx, batch_per_epoch, image_batch, label_batch, discriminator, recognizer, composite_gan, generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path)
+            d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std = train_step(epoch_idx, batch_idx,
+                                                                                       batch_per_epoch, image_batch,
+                                                                                       label_batch, discriminator,
+                                                                                       recognizer, composite_gan,
+                                                                                       generator_optimizer,
+                                                                                       discriminator_optimizer,
+                                                                                       recognizer_optimizer, batch_size,
+                                                                                       latent_dim, loss_fn, disc_iters,
+                                                                                       apply_gradient_balance, random_words,
+                                                                                       bucket_size, gen_path)
 
             batch_summary.write(str(d_loss) + ";" + str(d_loss_real) + ";" + str(d_loss_fake) + ";" +
                                 str(r_loss_real) + ";" + str(r_loss_fake) + ";" + str(r_loss_balanced) + ";" +
-                                str(g_loss) + ";" + str(g_loss_added) + ";" + str(g_loss_balanced) + ";" + str(g_loss_final) + ";" +
-                                str(alpha) + ";" + str(r_loss_fake_std) + ";" + str(g_loss_std) + '\n')
+                                str(g_loss) + ";" + str(g_loss_added) + ";" + str(g_loss_balanced) + ";" +
+                                str(g_loss_final) + ";" + str(alpha) + ";" + str(r_loss_fake_std) + ";" +
+                                str(g_loss_std) + '\n')
 
             # append to lists for epoch summary
             d_loss_total += d_loss
@@ -252,15 +285,18 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
+        char_err, word_err = validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim)
+
         divider = batch_per_epoch
         epoch_summary.write(str(d_loss_total / divider) + ";" + str(d_loss_real_total / divider) + ";" +
                             str(d_loss_fake_total / divider) + ";" + str(r_loss_real_total / divider) + ";" +
                             str(r_loss_fake_total / divider) + ";" + str(r_loss_balanced_total / divider) + ";" +
                             str(g_loss_total / divider) + ";" + str(g_loss_added_total / divider) + ";" +
                             str(g_loss_balanced_total / divider) + ";" + str(g_loss_final_total / divider) + ";" +
-                            str(alphas / divider) + ";" + str(r_loss_fake_std_total / divider) + ";" + str(g_loss_std_total / divider) + '\n')
+                            str(alphas / divider) + ";" + str(r_loss_fake_std_total / divider) + ";" +
+                            str(g_loss_std_total / divider) + ";" + str(char_err) + ";" + str(word_err) + ";" + '\n')
 
-        # Produce images for the GIF as we go
+        # produce images for visual evaluation - quantitative
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
 
         # define sub-folders to save weights after each epoch
@@ -280,13 +316,24 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
+        # if best validation accuracy so far, save model parameters
+        if char_err < best_char_error_rate:
+            print('Character error rate improved, save model')
+            best_char_error_rate = char_err
+            no_improvement_since = 0
+        else:
+            print(f'Character error rate not improved, best so far: {char_err}%')
+            no_improvement_since += 1
+
+        # stop training if no more improvement in the last x epochs
+        if no_improvement_since >= 15:
+            print(f'No more improvement since {15} epochs. Training stopped.')
+            break
+
     batch_summary.close()
     epoch_summary.close()
 
 
-# Notice the use of `tf.function`
-# This annotation causes the function to be "compiled".
-# @tf.function
 def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discriminator, recognizer, composite_gan,
                generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn,
                disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path):
@@ -432,7 +479,10 @@ def generate_and_save_images(model, epoch, test_input, gen_path, char_vector):
             generated_imgs = model([seed, label], training=False)
             # scaling change: (-1, 1) -> (0, 1)
             generated_imgs = (generated_imgs + 1) / 2.0
-            predictions.append(generated_imgs)
+            if np.isnan(generated_imgs).any():
+                predictions.append(np.ones_like(generated_imgs))  # if image is nan, paint black image
+            else:
+                predictions.append(generated_imgs)
 
     # grid to scale images with different width
     grid = [pred.shape[-2] // 16 for pred in predictions]
@@ -447,7 +497,7 @@ def generate_and_save_images(model, epoch, test_input, gen_path, char_vector):
             axs[i, j].imshow(predictions[(i * len(labels)) + j][0, :, :, 0], cmap='gray')
             # write labels once
             if i == 0:
-                axs[i, j].text(-5, -5, "".join([char_vector[label] for label in labels[j]]), fontsize='xx-small')
+                axs[i, j].text(-5, -10, "".join([char_vector[label] for label in labels[j]]), fontsize='xx-small')
             axs[i, j].axis('off')
 
     if not os.path.exists(gen_path):
@@ -500,6 +550,7 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
         random_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
+    print(random_words_path)
     with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
