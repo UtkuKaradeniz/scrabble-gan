@@ -27,7 +27,7 @@ shared_specs.my_rec=0                           #1
 shared_specs.my_disc=0                          #1
 
 # I/O and data structure
-io.ex_id = 'ex70/'
+io.ex_id = 'test1/'
 io.base_path = '/scrabble-gan/'
 io.checkpoint_dir = 'data/scrabble-gan-checkpoints/'
 io.gen_imgs_dir = 'data/output/'
@@ -38,7 +38,7 @@ io.model_dir = 'data/scrabble-gan-model/'
 io.input_dim = (32, 160, 1)
 io.n_classes = 52
 io.seq_len = None
-io.bucket_size = 14
+io.bucket_size = 12
 io.raw_dir = 'data/IAM_mygan/img/'
 io.read_dir = 'data/IAM_mygan/words-Reading'
 io.char_vec = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
