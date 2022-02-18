@@ -354,7 +354,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
-        char_err, word_err = validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim)
+        # char_err, word_err = validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim)
 
         divider = batch_per_epoch
         epoch_summary.write(str(d_loss_total / divider) + ";" + str(d_loss_real_total / divider) + ";" +
