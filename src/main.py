@@ -78,16 +78,6 @@ def main():
     # load random words into memory (used for word generation by G)
     # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
-    print(len(random_words))
-    print(len(random_words[0]))
-    print(len(random_words[1]))
-    print(len(random_words[2]))
-    if len(random_words) != bucket_size:
-        print(len(random_words))
-        print(bucket_size)
-        print(read_dir)
-        print(char_vec)
-        raise "load_random_word_list not working"
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
