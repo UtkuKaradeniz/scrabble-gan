@@ -23,6 +23,7 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
     valid_samples = 0
     transcription_lengths = []
 
+    output_dir = output_dir + '-' + mode + '/'
     if not os.path.exists(output_dir):
         for i in range(bucket_size):
             # create buckets (in this work, words longer than 10 chars are for the sake of simplicity ignored)
@@ -58,7 +59,6 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
                     transcriptions[file_nm] = '-1'
 
     print('size of iamDB words: {}'.format(len(transcriptions)))
-    print(listOfFiles)
 
     # (3) process/ filter images along its respective transcriptions
     for idx, file in enumerate(listOfFiles):
@@ -76,13 +76,17 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
 
                 # read image (grayscale mode) and resize to common data size
                 img = cv2.imread(os.path.join(input_dir, file), 0)
-
+                print(os.path.join(input_dir, file))
                 try:
                     resized_img = cv2.resize(img, (int(h / 2) * len_word, h))
 
                     # compute transcription length and save to corresponding output bucket
                     transcription_length = len(transcription)
                     output_bucket = os.path.join(output_dir, str(transcription_length))
+                    print(transcription_length)
+                    print(transcription)
+                    print(output_bucket)
+
 
                     if transcription_length <= bucket_size:
                         cv2.imwrite(os.path.join(output_bucket, img_nm), resized_img)

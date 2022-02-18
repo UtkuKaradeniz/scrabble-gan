@@ -1,7 +1,7 @@
 from src.dinterface.iam_handwriting_db import convert_to_gan_reading_format_save
 
 
-def init_reading(train_input, train_output, target_size, bucket_size):
+def init_reading(train_input, train_output, target_size, bucket_size, mode):
     """
     Convert iamDB dataset (words) to "GAN format":
 
@@ -40,15 +40,8 @@ def init_reading(train_input, train_output, target_size, bucket_size):
     :param bucket_size:
     :return:
     """
-    print('convert iamDB words to GAN-Reading task...\n')
-    print('converting training dataset being...\n')
-    convert_to_gan_reading_format_save(train_input, train_output, target_size, bucket_size, mode='train')
-    print('training dataset prepared!\n')
-    print('converting validation1 dataset being...\n')
-    convert_to_gan_reading_format_save(train_input, train_output, target_size, bucket_size, mode='valid1')
-    print('validation1 dataset prepared!\n')
-    print('converting validation2 dataset being...\n')
-    convert_to_gan_reading_format_save(train_input, train_output, target_size, bucket_size, mode='valid2')
-    print('validation2 dataset prepared!\n')
-    # convert_to_gan_reading_format_save(train_input, train_output, target_size, bucket_size, ttv='test')
+    print('converting ' + mode + ' dataset...\n')
+    convert_to_gan_reading_format_save(train_input, train_output, target_size, bucket_size, mode=mode)
+    print(mode + ' dataset prepared!\n')
+
 

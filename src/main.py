@@ -45,13 +45,40 @@ def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_style, num_gen
 @gin.configurable('io')
 def setup_io(ex_id, base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, n_classes,
              seq_len, char_vec, bucket_size):
-    gen_path = base_path + gen_imgs_dir
+    gen_path = base_path + gen_imgs_dir + ex_id
     ckpt_path = base_path + checkpoint_dir + ex_id
     m_path = base_path + model_dir + ex_id
     raw_dir = base_path + raw_dir
     read_dir = base_path + read_dir
 
     return input_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec
+
+
+def create_database_dirs(raw_dir, ckpt_path, m_path, gen_path, read_dir, in_dim, bucket_size):
+    """creates directories for the current experiment and the database folders if any of them are missing"""
+    # create other directories for the current experiment
+    if not os.path.exists(ckpt_path):
+        os.makedirs(ckpt_path)
+    if not os.path.exists(m_path):
+        os.makedirs(m_path)
+    if not os.path.exists(gen_path):
+        os.makedirs(gen_path)
+
+    # create database directories
+    train_dir = read_dir + '-' + 'train' + '/'
+    valid1_dir = read_dir + '-' + 'valid1' + '/'
+    valid2_dir = read_dir + '-' + 'valid2' + '/'
+
+    # TODO: make -> if 'train' mode -> check & create valid1/valid2/train buckets
+    # convert IAM Handwriting dataset (words) to GAN format
+    if not os.path.exists(train_dir):
+        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='train')
+    if not os.path.exists(valid1_dir):
+        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='valid1')
+    if not os.path.exists(valid2_dir):
+        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='valid2')
+
+    return train_dir, valid1_dir, valid2_dir
 
 
 def main():
@@ -61,43 +88,29 @@ def main():
     my_rec, my_disc = get_shared_specs()
     in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec = setup_io()
 
-    train_dir = read_dir + '-' + 'train' + '/'
-    valid1_dir = read_dir + '-' + 'valid1' + '/'
-    valid2_dir = read_dir + '-' + 'valid2' + '/'
-
-    # create directories for the current experiment
-    if not os.path.exists(ckpt_path):
-        os.makedirs(ckpt_path)
-    if not os.path.exists(m_path):
-        os.makedirs(m_path)
-    if not os.path.exists(gen_path):
-        os.makedirs(gen_path)
-
     # TODO: solve path issues in windows
     # for testing in windows
     if os.name == 'nt':
+        read_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading'
         train_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-train\\'
         valid1_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-valid1\\'
         valid2_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-valid2\\'
         raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
         gen_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\ex30'
 
-    # TODO: make -> if 'train' mode -> check & create valid1/valid2/train buckets
-    # convert IAM Handwriting dataset (words) to GAN format
-    # train_dir =
-    # valid_dir
-    if not os.path.exists(train_dir) or not os.path.exists(valid1_dir) or not os.path.exists(valid2_dir):
-        print('converting iamDB-Dataset to GAN format...')
-        init_reading(raw_dir, read_dir, in_dim, bucket_size)
+    train_dir, valid1_dir, valid2_dir = create_database_dirs(raw_dir, ckpt_path, m_path, gen_path, read_dir,
+                                                             in_dim, bucket_size)
 
     # load random words into memory (used for word generation by G)
     # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
 
     # load and preprocess dataset (python generator)
-    train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
-    buf_size, words = return_sample(reading_dir=read_dir, bucket_size=bucket_size)
-    write_words(read_dir, words, mode)
+    train_dataset = load_prepare_data(in_dim, batch_size, train_dir, char_vec, bucket_size)
+    valid1_dataset = load_prepare_data(in_dim, batch_size, valid1_dir, char_vec, bucket_size)
+    valid2_dataset = load_prepare_data(in_dim, batch_size, valid2_dir, char_vec, bucket_size)
+    buf_size, words = return_sample(reading_dir=train_dir, bucket_size=bucket_size)
+    # write_words(read_dir, words, mode)
 
     assert 0 < buf_size == len(words) and len(words) > 0
 
