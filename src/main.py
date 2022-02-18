@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 from src.bigacgan.arch_ops import spectral_norm
-from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_sample, write_words
+from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_stats, write_words
 from src.bigacgan.net_architecture import make_generator, make_discriminator, make_my_discriminator
 from src.bigacgan.net_architecture import make_recognizer, make_my_recognizer, make_gan
 from src.bigacgan.net_loss import hinge, not_saturating
@@ -69,7 +69,6 @@ def create_database_dirs(raw_dir, ckpt_path, m_path, gen_path, read_dir, in_dim,
     valid1_dir = read_dir + '-' + 'valid1' + '/'
     valid2_dir = read_dir + '-' + 'valid2' + '/'
 
-    # TODO: make -> if 'train' mode -> check & create valid1/valid2/train buckets
     # convert IAM Handwriting dataset (words) to GAN format
     if not os.path.exists(train_dir):
         init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='train')
@@ -79,6 +78,25 @@ def create_database_dirs(raw_dir, ckpt_path, m_path, gen_path, read_dir, in_dim,
         init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='valid2')
 
     return train_dir, valid1_dir, valid2_dir
+
+
+def dataset_stats(train_dir, valid1_dir, valid2_dir, bucket_size, random_words):
+    # count sample size and print it
+    train_words = return_stats(train_dir, bucket_size)
+    valid1_words = return_stats(valid1_dir, bucket_size)
+    valid2_words = return_stats(valid2_dir, bucket_size)
+
+    print(f'no. train samples: {len(train_words)}\n'
+          f'no. valid1 samples: {len(valid1_words)}\n'
+          f'no. valid2 samples: {len(valid2_words)}\n'
+          f'no. random word samples: {len(random_words)}\n')
+
+    # write only the words into separate files for future use
+    write_words(train_dir, train_words, mode='train')
+    write_words(valid1_dir, valid1_words, mode='valid1')
+    write_words(valid2_dir, valid2_words, mode='valid2')
+
+    return train_words, valid1_words, valid2_words
 
 
 def main():
@@ -102,17 +120,15 @@ def main():
                                                              in_dim, bucket_size)
 
     # load random words into memory (used for word generation by G)
-    # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, train_dir, char_vec, bucket_size)
     valid1_dataset = load_prepare_data(in_dim, batch_size, valid1_dir, char_vec, bucket_size)
     valid2_dataset = load_prepare_data(in_dim, batch_size, valid2_dir, char_vec, bucket_size)
-    buf_size, words = return_sample(reading_dir=train_dir, bucket_size=bucket_size)
-    # write_words(read_dir, words, mode)
 
-    assert 0 < buf_size == len(words) and len(words) > 0
+    # print dataset info
+    train_words, valid1_words, valid2_words = dataset_stats(train_dir, valid1_dir, valid2_dir, bucket_size, random_words)
 
     # init generator, discriminator and recognizer
     generator = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
@@ -142,10 +158,10 @@ def main():
     random_bucket_idx = np.random.randint(low=3, high=bucket_size, size=num_gen)
     labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
-    train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,
-          discriminator_optimizer, recognizer_optimizer, [seeds, labels], buf_size, batch_size, epochs, m_path,
+    train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminator, recognizer, gan, ckpt_path,
+          generator_optimizer, discriminator_optimizer, recognizer_optimizer, [seeds, labels], batch_size, epochs,
           latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec,
-          -1)
+          train_words, valid1_words, valid2_words)
 
     # use imageio to create an animated gif using the images saved during training.
     make_gif(gen_path)

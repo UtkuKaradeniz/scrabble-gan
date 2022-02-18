@@ -21,7 +21,7 @@ def write_words(reading_dir, words, mode):
     f.close()
 
 
-def return_sample(reading_dir, bucket_size):
+def return_stats(reading_dir, bucket_size):
     words = []
     number_samples = 0
 
@@ -32,12 +32,13 @@ def return_sample(reading_dir, bucket_size):
         file_list = [fi for fi in file_list if fi.endswith(".txt")]
         for file in file_list:
             with open(reading_dir_bucket + file, 'r', encoding='utf8') as f:
-                # 'auto' -> [0, 20, 19, 14]
                 words.append(f.readline())
 
         number_samples += len(file_list)
 
-    return number_samples, words
+    assert number_samples == len(words)
+
+    return words
 
 
 def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_size):
@@ -92,9 +93,12 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         bucket_weights[i] = len(data_buckets[i][1]) / number_samples
 
     # (3) create python generator
+    for i in range(1, bucket_size + 1, 1):
+        bucket_weights[i] = len(data_buckets[i][1]) / number_samples
+        bucket_position
     while True:
-        # select random bucket (follow transcription length distribution)
-        random_bucket_idx = np.random.choice(bucket_size, 1, p=[value for value in bucket_weights.values()]) + 1
+        # select random bucket
+        random_bucket_idx = np.random.choice(bucket_size, 1) + 1
         random_bucket_idx = int(random_bucket_idx[0])
 
         image_batch = []
@@ -242,10 +246,10 @@ def validate(generator, recognizer, char_vector, validate_words, batch_size, buc
                                                   bucket_size, latent_dim)
 
 
-def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix,
-          generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, buffer_size, batch_size,
-          epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words,
-          bucket_size, char_vector, validate_words):
+def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminator, recognizer, composite_gan,
+          checkpoint, generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, batch_size,
+          epochs, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size,
+          char_vector, train_words, valid1_words, valid2_words):
     """
     Whole training procedure
 
@@ -273,15 +277,16 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     :param char_vector:                 valid vocabulary represented as array of chars/ string
     :return:
     """
-    batch_per_epoch = int(buffer_size / batch_size) + 1
+    train_sample_size = len(train_words)
+    batch_per_epoch = int(train_sample_size / batch_size) + 1
 
-    print('no. training samples: ', buffer_size)
+    print('no. training samples: ', train_sample_size)
     print('batch size:           ', batch_size)
     print('no. batch_per_epoch:  ', batch_per_epoch)
     print('epoch size:           ', epochs)
 
-    best_char_error_rate = float('inf')  # best validation character error rate
-    no_improvement_since = 0  # number of epochs no improvement of character error rate occurred
+    # best_char_error_rate = float('inf')  # best validation character error rate
+    # no_improvement_since = 0  # number of epochs no improvement of character error rate occurred
 
     # define checkpoint save paths
     generator_save_dir = os.path.join(checkpoint, 'generator/')
@@ -293,17 +298,22 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     if not os.path.exists(recognizer_save_dir):
         os.makedirs(recognizer_save_dir)
 
-    print('training...')
+    # create summary files
     batch_summary = open(gen_path + "batch_summary.txt", "w")
     epoch_summary = open(gen_path + "epoch_summary.txt", "w")
 
-    epoch_summary.write(
-        "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
-    batch_summary.write("disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;g_loss_final;alpha;r_loss_fake_std;g_loss_std\n")
+    # write headers to files
+    header = "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;" \
+             "g_loss_final;alpha;r_loss_fake_std;g_loss_std\n"
+    epoch_summary.write(header)
+    batch_summary.write(header)
 
+    # training loop
+    print('training...')
     for epoch_idx in range(epochs):
         start = time.time()
 
+        # variables for calculating total of losses
         d_loss_total = 0.0
         d_loss_real_total = 0.0
         d_loss_fake_total = 0.0
@@ -319,7 +329,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
         alphas = 0.0
 
         for batch_idx in range(batch_per_epoch):
-            image_batch, label_batch = next(dataset)
+            image_batch, label_batch = next(train_dataset)
 
             r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
             d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std = train_step(epoch_idx, batch_idx,

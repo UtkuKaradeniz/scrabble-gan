@@ -101,12 +101,12 @@ def my_recognizer(input_dim, output_classes, restore=False):
     pool_5 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(lrelu_5)
     # ============================================= 6th layer ==============================================#
     drop_5 = layers.Dropout(rate=0.2)(pool_5)
-    conv_6 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_5)
+    conv_6 = layers.Conv2D(filters=112, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_5)
     bnorm_6 = layers.BatchNormalization()(conv_6)
     lrelu_6 = layers.LeakyReLU(alpha=0.01)(bnorm_6)
     # ============================================= 7th layer ==============================================#
     drop_6 = layers.Dropout(rate=0.2)(lrelu_6)
-    conv_7 = layers.Conv2D(filters=144, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_6)
+    conv_7 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_6)
     bnorm_7 = layers.BatchNormalization()(conv_7)
     lrelu_7 = layers.LeakyReLU(alpha=0.01)(bnorm_7)
     # ============================================= RNN Layers ==============================================#
