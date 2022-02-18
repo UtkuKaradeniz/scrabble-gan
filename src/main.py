@@ -102,6 +102,13 @@ def main():
     seeds = [tf.random.normal([1, latent_dim]) for _ in range(num_style)]
     # choose random words with random lengths
     random_bucket_idx = np.random.randint(low=3, high=12, size=num_gen)
+    print(num_gen)
+    print(random_bucket_idx)
+    for i in range(2):
+        print(i)
+        print(random_bucket_idx[i])
+        print(random_words[random_bucket_idx[i]])
+        print(random.choice(random_words[random_bucket_idx[i]]))
     labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
     train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,
