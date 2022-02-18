@@ -67,6 +67,8 @@ def main():
 
     # load random words into memory (used for word generation by G)
     # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
+    print(bucket_size)
+    print(read_dir)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
 
     # load and preprocess dataset (python generator)

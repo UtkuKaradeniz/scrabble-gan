@@ -14,7 +14,7 @@ from src.bigacgan.net_architecture import ctc_loss
 
 
 def write_words(reading_dir, words, mode):
-    f = open(reading_dir + mode + '-words', 'w', encoding='utf8')
+    f = open(reading_dir + mode + '-words.txt', 'w', encoding='utf8')
     no_duplicates = list(dict.fromkeys(words))
     for word in no_duplicates:
         f.write("%s\n" % word)
@@ -113,9 +113,67 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
-def validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim):
+def validate_recognizer(recognizer, char_vector, r_validate_dataset, batch_size, bucket_size, latent_dim):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
-    """Feed a batch into the NN to recognize the texts."""
+    """Predict words generated with Generator"""
+    num_batch_elements = len(r_validate_words) // batch_size
+    labels = list(char_vector)
+    index2letter = {n: label for n, label in enumerate(labels)}
+    print(index2letter)
+
+    num_char_err = 0
+    num_char_total = 0
+    num_word_ok = 0
+    num_word_total = 0
+
+    for i in range(len(num_batch_elements)):
+        image_batch, label_batch = next(r_validate_dataset)
+
+        bucket_idx = i
+        fake_labels = np.array([random.choice(r_validate_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
+
+        # calculate time-steps
+        time_steps = recognizer(image_batch, training=False)
+        sequence_length_fake = random_bucket_idx + 1
+        inp_len_fake = -1 + sequence_length_fake * 4
+
+        # decode tim-steps
+        decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
+                                                 input_length=np.array([[inp_len_fake]] * batch_size), greedy=False)
+
+        texts_int, texts_string = [], []
+        # convert decoded to string
+        decode = [[[int(p) for p in x if p != -1] for x in y] for y in decoded]
+        texts_int.extend(np.swapaxes(decode, 0, 1))
+        for text in texts_int:
+            # get list object
+            text = text[0]
+            # vector to chars
+            ll = [index2letter[i - 1] for i in text]
+            # chars to words
+            texts_string.append(''.join(ll))
+
+        # calculate error rates
+        for i in range(len(texts_string)):
+            num_word_ok += 1 if fake_labels[i] == texts_string[i] else 0
+            num_word_total += 1
+            dist = editdistance.eval(texts_string[i], fake_labels[i])
+            num_char_err += dist
+            num_char_total += len(fake_labels[i])
+            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + fake_labels[i] + '"', '->',
+                  '"' + texts_string[i] + '"')
+
+    # print validation result
+    char_error_rate = num_char_err / num_char_total
+    word_accuracy = num_word_ok / num_word_total
+    print(f'Character error rate: {char_error_rate * 100.0}%. Word accuracy: {word_accuracy * 100.0}%.')
+
+    return char_error_rate, word_accuracy
+
+
+def validate_generator(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim):
+    # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
+    """Predict words generated with Generator"""
     num_batch_elements = len(validate_words) // batch_size
     labels = list(char_vector)
     index2letter = {n: label for n, label in enumerate(labels)}
@@ -173,6 +231,13 @@ def validate(generator, recognizer, char_vector, validate_words, batch_size, buc
     return char_error_rate, word_accuracy
 
 
+def validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim):
+    g_char_err, g_word_err = validate_generator(generator, recognizer, char_vector, validate_words, batch_size,
+                                                bucket_size, latent_dim)
+    v_char_err, v_word_err_ = validate_recognizer(recognizer, char_vector, validate_words, batch_size,
+                                                  bucket_size, latent_dim)
+
+
 def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix,
           generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, buffer_size, batch_size,
           epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words,
@@ -211,7 +276,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     print('no. batch_per_epoch:  ', batch_per_epoch)
     print('epoch size:           ', epochs)
 
-    best_char_error_rate = float('inf')  # best valdiation character error rate
+    best_char_error_rate = float('inf')  # best validation character error rate
     no_improvement_since = 0  # number of epochs no improvement of character error rate occurred
 
     # define checkpoint save paths
@@ -545,28 +610,44 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     :return:
     """
 
-    validate_words = []
-    test_words = []
+    # validate_words = []
+    # test_words = []
+    # for i in range(bucket_size):
+    #     validate_words.append([])
+    #     test_words.append([])
+    #
+    # random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
+    # with open(os.path.join(random_words_path, 'brown_random_vaild_1000.txt'), 'r') as fi_random_word_list:
+    #     for word in fi_random_word_list:
+    #         word = word.strip()
+    #         bucket = len(word)
+    #
+    #         if bucket <= bucket_size and word.isalpha():
+    #             validate_words[bucket - 1].append(word)
+    #
+    # with open(os.path.join(random_words_path, 'brown_random_test_19000.txt'), 'r') as fi_random_word_list:
+    #     for word in fi_random_word_list:
+    #         word = word.strip()
+    #         bucket = len(word)
+    #
+    #         if bucket <= bucket_size and word.isalpha():
+    #             test_words[bucket - 1].append([char_vector.index(char) for char in word])
+    #
+    # return validate_words, test_words
+
+    random_words = []
     for i in range(bucket_size):
-        validate_words.append([])
-        test_words.append([])
+        random_words.append([])
 
-    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir)))
-    with open(os.path.join(random_words_path, 'brown_random_vaild_1000.txt'), 'r') as fi_random_word_list:
+    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir))) + '/'
+    print(random_words_path)
+    with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
             bucket = len(word)
 
-            if bucket <= bucket_size and word.isalpha():
-                validate_words[bucket - 1].append(word)
+            if bucket <= bucket_size:
+                random_words[bucket - 1].append([char_vector.index(char) for char in word])
 
-    with open(os.path.join(random_words_path, 'brown_random_test_19000.txt'), 'r') as fi_random_word_list:
-        for word in fi_random_word_list:
-            word = word.strip()
-            bucket = len(word)
-
-            if bucket <= bucket_size and word.isalpha():
-                test_words[bucket - 1].append([char_vector.index(char) for char in word])
-
-    return validate_words, test_words
+    return random_words
 
