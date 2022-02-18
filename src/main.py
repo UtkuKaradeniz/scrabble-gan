@@ -66,7 +66,8 @@ def main():
         init_reading(raw_dir, read_dir, in_dim, bucket_size, mode)
 
     # load random words into memory (used for word generation by G)
-    validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
+    # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
+    random_words = load_random_word_list(read_dir, bucket_size, char_vec)
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
@@ -101,12 +102,12 @@ def main():
     seeds = [tf.random.normal([1, latent_dim]) for _ in range(num_style)]
     # choose random words with random lengths
     random_bucket_idx = np.random.randint(low=3, high=12, size=num_gen)
-    labels = [random.choice(validate_words[random_bucket_idx[i]]) for i in range(num_gen)]
+    labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
     train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,
           discriminator_optimizer, recognizer_optimizer, [seeds, labels], buf_size, batch_size, epochs, m_path,
-          latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, validate_words, bucket_size, char_vec,
-          validate_words)
+          latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec,
+          -1)
 
     # use imageio to create an animated gif using the images saved during training.
     make_gif(gen_path)
