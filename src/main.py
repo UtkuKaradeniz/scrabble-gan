@@ -43,14 +43,15 @@ def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_style, num_gen
 
 
 @gin.configurable('io')
-def setup_io(ex_id, base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, n_classes, seq_len,
-             char_vec, bucket_size, mode):
+def setup_io(ex_id, base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, n_classes,
+             seq_len, char_vec, bucket_size):
     gen_path = base_path + gen_imgs_dir
     ckpt_path = base_path + checkpoint_dir + ex_id
     m_path = base_path + model_dir + ex_id
     raw_dir = base_path + raw_dir
-    read_dir = base_path + read_dir + '-' + mode + '/'
-    return input_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode
+    read_dir = base_path + read_dir
+
+    return input_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec
 
 
 def main():
@@ -58,7 +59,11 @@ def main():
     gin.parse_config_file('scrabble_gan.gin')
     epochs, batch_size, latent_dim, embed_y, num_style, num_gen, kernel_reg, g_bw_attention, d_bw_attention, \
     my_rec, my_disc = get_shared_specs()
-    in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode = setup_io()
+    in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec = setup_io()
+
+    train_dir = read_dir + '-' + 'train' + '/'
+    valid1_dir = read_dir + '-' + 'valid1' + '/'
+    valid2_dir = read_dir + '-' + 'valid2' + '/'
 
     # create directories for the current experiment
     if not os.path.exists(ckpt_path):
@@ -71,7 +76,9 @@ def main():
     # TODO: solve path issues in windows
     # for testing in windows
     if os.name == 'nt':
-        read_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-' + mode + '\\'
+        train_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-train\\'
+        valid1_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-valid1\\'
+        valid2_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-valid2\\'
         raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
         gen_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\ex30'
 
@@ -79,9 +86,9 @@ def main():
     # convert IAM Handwriting dataset (words) to GAN format
     # train_dir =
     # valid_dir
-    if not os.path.exists(read_dir):
+    if not os.path.exists(train_dir) or not os.path.exists(valid1_dir) or not os.path.exists(valid2_dir):
         print('converting iamDB-Dataset to GAN format...')
-        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode)
+        init_reading(raw_dir, read_dir, in_dim, bucket_size)
 
     # load random words into memory (used for word generation by G)
     # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)

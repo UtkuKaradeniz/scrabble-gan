@@ -39,7 +39,6 @@ io.input_dim = (32, 160, 1)
 io.n_classes = 52
 io.seq_len = None
 io.bucket_size = 14
-io.mode = 'train'                               # 'train' / 'test' / 'validate'
 io.raw_dir = 'data/IAM_mygan/img/'
 io.read_dir = 'data/IAM_mygan/words-Reading'
 io.char_vec = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'

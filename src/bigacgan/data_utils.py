@@ -385,19 +385,19 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
-        # if best validation accuracy so far, save model parameters
-        if char_err < best_char_error_rate:
-            print('Character error rate improved, save model')
-            best_char_error_rate = char_err
-            no_improvement_since = 0
-        else:
-            print(f'Character error rate not improved, best so far: {char_err}%')
-            no_improvement_since += 1
-
-        # stop training if no more improvement in the last x epochs
-        if no_improvement_since >= 15:
-            print(f'No more improvement since {15} epochs. Training stopped.')
-            break
+        # # if best validation accuracy so far, save model parameters
+        # if char_err < best_char_error_rate:
+        #     print('Character error rate improved, save model')
+        #     best_char_error_rate = char_err
+        #     no_improvement_since = 0
+        # else:
+        #     print(f'Character error rate not improved, best so far: {char_err}%')
+        #     no_improvement_since += 1
+        #
+        # # stop training if no more improvement in the last x epochs
+        # if no_improvement_since >= 15:
+        #     print(f'No more improvement since {15} epochs. Training stopped.')
+        #     break
 
     batch_summary.close()
     epoch_summary.close()
