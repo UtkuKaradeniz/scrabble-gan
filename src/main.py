@@ -104,6 +104,7 @@ def main():
     random_bucket_idx = np.random.randint(low=3, high=12, size=num_gen)
     print(num_gen)
     print(random_bucket_idx)
+    print("bucket_size: ", len(random_words))
     for i in range(2):
         print(i)
         print(random_bucket_idx[i])
