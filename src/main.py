@@ -65,6 +65,7 @@ def main():
     if os.name == 'nt':
         read_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-' + mode + '\\'
         raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
+        gen_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\ex30'
 
     # TODO: make -> if 'train' mode -> check & create valid1/valid2/train buckets
     # convert IAM Handwriting dataset (words) to GAN format
@@ -77,6 +78,10 @@ def main():
     # load random words into memory (used for word generation by G)
     # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
+    print(len(random_words))
+    print(len(random_words[0]))
+    print(len(random_words[1]))
+    print(len(random_words[2]))
     if len(random_words) != bucket_size:
         print(len(random_words))
         print(bucket_size)
@@ -116,7 +121,7 @@ def main():
     # generate as many styles as needed
     seeds = [tf.random.normal([1, latent_dim]) for _ in range(num_style)]
     # choose random words with random lengths
-    random_bucket_idx = np.random.randint(low=3, high=12, size=num_gen)
+    random_bucket_idx = np.random.randint(low=3, high=bucket_size, size=num_gen)
     labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
     train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,

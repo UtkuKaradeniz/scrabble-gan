@@ -81,7 +81,11 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
                 labels.append(label)
                 number_samples += 1
 
-        data_buckets[i] = (imgs, labels)
+        # shuffle lists
+        shuffled = list(zip(imgs, labels))
+        random.shuffle(shuffled)
+        imgs_shuffled, labels_shuffled = zip(*shuffled)
+        data_buckets[i] = (imgs_shuffled, labels_shuffled)
 
     # (2) compute bucket_weights
     for i in range(1, bucket_size + 1, 1):
