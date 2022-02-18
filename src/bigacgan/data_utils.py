@@ -434,6 +434,8 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         print(len(random_words[len(random_words)-1]))
         print(random.choice(random_words[random_bucket_idx]))
         raise "load_random_word_list not working"
+    print(random_bucket_idx)
+    print(len(random_words[random_bucket_idx]))
     fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
 
     # obtain shapes
