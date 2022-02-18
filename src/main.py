@@ -67,9 +67,13 @@ def main():
 
     # load random words into memory (used for word generation by G)
     # validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
-    print(bucket_size)
-    print(read_dir)
     random_words = load_random_word_list(read_dir, bucket_size, char_vec)
+    if len(random_words) != bucket_size:
+        print(len(random_words))
+        print(bucket_size)
+        print(read_dir)
+        print(char_vec)
+        raise "load_random_word_list not working"
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
@@ -104,14 +108,6 @@ def main():
     seeds = [tf.random.normal([1, latent_dim]) for _ in range(num_style)]
     # choose random words with random lengths
     random_bucket_idx = np.random.randint(low=3, high=12, size=num_gen)
-    print(num_gen)
-    print(random_bucket_idx)
-    print("bucket_size: ", len(random_words))
-    for i in range(2):
-        print(i)
-        print(random_bucket_idx[i])
-        print(random_words[random_bucket_idx[i]])
-        print(random.choice(random_words[random_bucket_idx[i]]))
     labels = [random.choice(random_words[random_bucket_idx[i]]) for i in range(num_gen)]
 
     train(train_dataset, generator, discriminator, recognizer, gan, ckpt_path, -1, generator_optimizer,

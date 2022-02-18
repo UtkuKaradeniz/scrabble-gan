@@ -428,6 +428,12 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     # generate latent points + random sequence labels from word list
     noise = tf.random.normal([batch_size, latent_dim])
     random_bucket_idx = random.randint(0, bucket_size - 1)
+    if len(random_words) != bucket_size:
+        print(len(random_words))
+        print(bucket_size)
+        print(len(random_words[len(random_words)-1]))
+        print(random.choice(random_words[random_bucket_idx]))
+        raise "load_random_word_list not working"
     fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
 
     # obtain shapes
@@ -640,7 +646,6 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
         random_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir))) + '/'
-    print(random_words_path)
     with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
