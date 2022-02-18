@@ -93,9 +93,9 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         bucket_weights[i] = len(data_buckets[i][1]) / number_samples
 
     # (3) create python generator
-    for i in range(1, bucket_size + 1, 1):
-        bucket_weights[i] = len(data_buckets[i][1]) / number_samples
-        bucket_position
+    # for i in range(1, bucket_size + 1, 1):
+    #     bucket_weights[i] = len(data_buckets[i][1]) / number_samples
+    #     bucket_position
     while True:
         # select random bucket
         random_bucket_idx = np.random.choice(bucket_size, 1) + 1
@@ -313,7 +313,7 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
     for epoch_idx in range(epochs):
         start = time.time()
 
-        # variables for calculating total of losses
+        # variables for total of losses
         d_loss_total = 0.0
         d_loss_real_total = 0.0
         d_loss_fake_total = 0.0
