@@ -60,7 +60,16 @@ def main():
     my_rec, my_disc = get_shared_specs()
     in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode = setup_io()
 
+    # TODO: solve path issues in windows
+    # for testing in windows
+    if os.name == 'nt':
+        read_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-' + mode + '\\'
+        raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
+
+    # TODO: make -> if 'train' mode -> check & create valid1/valid2/train buckets
     # convert IAM Handwriting dataset (words) to GAN format
+    # train_dir =
+    # valid_dir
     if not os.path.exists(read_dir):
         print('converting iamDB-Dataset to GAN format...')
         init_reading(raw_dir, read_dir, in_dim, bucket_size, mode)

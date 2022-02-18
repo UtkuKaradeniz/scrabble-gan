@@ -653,8 +653,9 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
             word = word.strip()
             bucket = len(word)
 
-            if bucket <= bucket_size:
+            if bucket <= bucket_size and word.isalpha():
                 random_words[bucket - 1].append([char_vector.index(char) for char in word])
+
 
     return random_words
 
