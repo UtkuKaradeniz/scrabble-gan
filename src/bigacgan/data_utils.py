@@ -363,7 +363,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
                             str(g_loss_total / divider) + ";" + str(g_loss_added_total / divider) + ";" +
                             str(g_loss_balanced_total / divider) + ";" + str(g_loss_final_total / divider) + ";" +
                             str(alphas / divider) + ";" + str(r_loss_fake_std_total / divider) + ";" +
-                            str(g_loss_std_total / divider) + ";" + str(char_err) + ";" + str(word_err) + ";" + '\n')
+                            str(g_loss_std_total / divider) + ";" + '\n')
 
         # produce images for visual evaluation - quantitative
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)

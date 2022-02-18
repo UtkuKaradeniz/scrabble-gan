@@ -43,11 +43,11 @@ def get_shared_specs(epochs, batch_size, latent_dim, embed_y, num_style, num_gen
 
 
 @gin.configurable('io')
-def setup_io(base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, n_classes, seq_len,
+def setup_io(ex_id, base_path, checkpoint_dir, gen_imgs_dir, model_dir, raw_dir, read_dir, input_dim, n_classes, seq_len,
              char_vec, bucket_size, mode):
     gen_path = base_path + gen_imgs_dir
-    ckpt_path = base_path + checkpoint_dir
-    m_path = base_path + model_dir
+    ckpt_path = base_path + checkpoint_dir + ex_id
+    m_path = base_path + model_dir + ex_id
     raw_dir = base_path + raw_dir
     read_dir = base_path + read_dir + '-' + mode + '/'
     return input_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode
@@ -59,6 +59,14 @@ def main():
     epochs, batch_size, latent_dim, embed_y, num_style, num_gen, kernel_reg, g_bw_attention, d_bw_attention, \
     my_rec, my_disc = get_shared_specs()
     in_dim, n_classes, seq_len, bucket_size, ckpt_path, gen_path, m_path, raw_dir, read_dir, char_vec, mode = setup_io()
+
+    # create directories for the current experiment
+    if not os.path.exists(ckpt_path):
+        os.makedirs(ckpt_path)
+    if not os.path.exists(m_path):
+        os.makedirs(m_path)
+    if not os.path.exists(gen_path):
+        os.makedirs(gen_path)
 
     # TODO: solve path issues in windows
     # for testing in windows

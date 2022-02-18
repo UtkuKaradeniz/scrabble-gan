@@ -27,10 +27,11 @@ shared_specs.my_rec=0                           #1
 shared_specs.my_disc=0                          #1
 
 # I/O and data structure
+io.ex_id = 'ex70/'
 io.base_path = '/scrabble-gan/'
-io.checkpoint_dir = 'data/scrabble-gan-checkpoints/ex70/'
-io.gen_imgs_dir = 'data/output/ex70/'
-io.model_dir = 'data/scrabble-gan-model/ex70/'
+io.checkpoint_dir = 'data/scrabble-gan-checkpoints/'
+io.gen_imgs_dir = 'data/output/'
+io.model_dir = 'data/scrabble-gan-model/'
 
 
 # Dataset
