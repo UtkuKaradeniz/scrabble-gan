@@ -67,8 +67,6 @@ def main():
 
     # load random words into memory (used for word generation by G)
     validate_words, test_words = load_random_word_list(read_dir, bucket_size, char_vec)
-    print(validate_words)
-    print(test_words)
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, read_dir, char_vec, bucket_size)
