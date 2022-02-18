@@ -626,7 +626,7 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     for i in range(bucket_size):
         random_words.append([])
 
-    random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir))) + '/'
+    random_words_path = os.path.dirname(os.path.dirname(reading_dir)) + '/'
     with open(os.path.join(random_words_path, 'brown_random.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
