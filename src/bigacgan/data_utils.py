@@ -481,8 +481,9 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         raise "load_random_word_list not working"
 
     fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(len(labels))], np.int32)
-    print(fake_labels)
-    print(images)
+    print(noise.shape)
+    print(fake_labels.shape)
+    print(images.shape)
     # obtain shapes
     batch_size_real = images.shape[0]
     sequence_length_real = len(labels[0])
@@ -492,6 +493,8 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape, tf.GradientTape() as rec_tape:
         # generate images + compute D(fake) + R(fake)
         inp_len_fake = -1 + sequence_length_fake * 4
+        print(sequence_length_fake)
+        print(inp_len_fake)
         gen_images, d_fake_logits, r_fake_logits = composite_gan(
             [noise, fake_labels, np.array([[inp_len_fake]] * batch_size),
              np.array([[sequence_length_fake]] * batch_size)], training=True)
