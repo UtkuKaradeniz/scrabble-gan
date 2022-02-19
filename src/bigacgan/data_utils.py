@@ -92,7 +92,7 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
     # list to keep track of where we are at each bucket
     bucket_position = []
     for i in range(1, bucket_size + 1, 1):
-        bucket_position.append([0])
+        bucket_position.append(0)
         buckets.append(i)
     while True:
         final_batch_size = None
