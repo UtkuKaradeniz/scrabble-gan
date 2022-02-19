@@ -7,7 +7,7 @@ import random
 import gin
 import numpy as np
 import tensorflow as tf
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 from src.bigacgan.arch_ops import spectral_norm
 from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_stats, write_words
