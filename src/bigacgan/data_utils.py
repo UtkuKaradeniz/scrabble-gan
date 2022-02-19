@@ -100,7 +100,8 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         random_bucket_idx = np.random.choice(buckets, 1) + 1
         print("buckets: ", buckets)
         print("random bucket id: ", random_bucket_idx)
-        if bucket_position[random_bucket_idx] + batch_size > len(data_buckets[random_bucket_idx][0]):
+        print("bucket position: ", bucket_position[random_bucket_idx])
+        if bucket_position[random_bucket_idx] + batch_size > len(data_buckets[random_bucket_idx][1]):
             # if the bucket has less than the batch size, set final_batch_size
             final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx]
             # remove the entry from buckets, so that it does not get chosen again
