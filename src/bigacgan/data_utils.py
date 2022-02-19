@@ -475,7 +475,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         batch_size = len(labels)
     noise = tf.random.normal([batch_size, latent_dim])
     # random_bucket_idx = random.randint(0, bucket_size - 1)
-    random_bucket_idx = len(labels[0])
+    random_bucket_idx = len(labels[0]) - 1
     if len(random_words) != bucket_size:
         print(len(random_words))
         print(bucket_size)
