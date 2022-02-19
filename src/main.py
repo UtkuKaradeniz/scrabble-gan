@@ -25,7 +25,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 @gin.configurable
-def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply_gradient_balance, rmsprop):
+def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply_gradient_balance,
+                    gradient_balance_type, rmsprop):
     generator_optimizer = tf.keras.optimizers.Adam(learning_rate=g_lr, beta_1=beta_1, beta_2=beta_2)
     discriminator_optimizer = tf.keras.optimizers.Adam(learning_rate=d_lr, beta_1=beta_1, beta_2=beta_2)
     if rmsprop:
@@ -33,7 +34,7 @@ def setup_optimizer(g_lr, d_lr, r_lr, beta_1, beta_2, loss_fn, disc_iters, apply
     else:
         recognizer_optimizer = tf.keras.optimizers.Adam(learning_rate=r_lr, beta_1=beta_1, beta_2=beta_2)
     return generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, \
-           apply_gradient_balance
+           apply_gradient_balance, gradient_balance_type
 
 
 @gin.configurable('shared_specs')
@@ -125,11 +126,6 @@ def main():
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, train_dir, char_vec, bucket_size)
-
-    for i in range(100):
-        imgs, labels = next(train_dataset)
-        print("batch_size: ", len(imgs))
-
     valid1_dataset = load_prepare_data(in_dim, batch_size, valid1_dir, char_vec, bucket_size)
     valid2_dataset = load_prepare_data(in_dim, batch_size, valid2_dir, char_vec, bucket_size)
 
@@ -155,7 +151,8 @@ def main():
     gan = make_gan(generator, discriminator, recognizer)
 
     # init optimizer for both generator, discriminator and recognizer
-    generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance = setup_optimizer()
+    generator_optimizer, discriminator_optimizer, recognizer_optimizer, loss_fn, disc_iters, apply_gradient_balance, \
+    gradient_balance_type = setup_optimizer()
 
     ### choose seed and labels to generate images
     # generate as many styles as needed
@@ -166,8 +163,8 @@ def main():
 
     train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminator, recognizer, gan, ckpt_path,
           generator_optimizer, discriminator_optimizer, recognizer_optimizer, [seeds, labels], batch_size, epochs,
-          latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size, char_vec,
-          train_words, valid1_words, valid2_words)
+          latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, gradient_balance_type, random_words,
+          bucket_size, char_vec, train_words, valid1_words, valid2_words)
 
     # use imageio to create an animated gif using the images saved during training.
     make_gif(gen_path)

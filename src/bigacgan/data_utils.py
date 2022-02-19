@@ -84,30 +84,49 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         shuffled = list(zip(imgs, labels))
         random.shuffle(shuffled)
         imgs_shuffled, labels_shuffled = zip(*shuffled)
-
         data_buckets[i] = (imgs_shuffled, labels_shuffled)
 
-    # (2) create python generator
+    # list to keep track of which buckets have elements and its save
     buckets = []
-    # list to keep track of where we are at each bucket
+    buckets_save = []
+    # list to keep track of where we are at each bucket and its save
     bucket_position = []
+    bucket_position_save = []
     for i in range(1, bucket_size + 1, 1):
         bucket_position.append(0)
+        bucket_position_save.append(0)
         buckets.append(i)
-    buckets = [11, 12]
+        buckets_save.append(i)
+
+    # (2) create python generator
     while True:
         final_batch_size = None
+        # if we run out of buckets, refill them
+        if len(buckets) == 0:
+            exit(-1)
+            # reset buckets
+            buckets = [i for i in buckets_save]
+            # reset bucket positions
+            bucket_position = [j for j in bucket_position_save]
+            # re-shuffle dictionary
+            list_buckets = list(data_buckets.items())
+            random.shuffle(list_buckets)
+            data_buckets = dict(list_buckets)
+
         # select random bucket
         random_bucket_idx = np.random.choice(buckets, 1)
         random_bucket_idx = int(random_bucket_idx[0])
-        print("buckets: ", buckets)
-        print("random bucket id: ", random_bucket_idx)
-        print("bucket position: ", bucket_position[random_bucket_idx-1])
-        if bucket_position[random_bucket_idx-1] + batch_size > len(data_buckets[random_bucket_idx][1]):
-            # if the bucket has less than the batch size, set final_batch_size
-            final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
+
+        bucket_length = len(data_buckets[random_bucket_idx][1])
+        to_check = bucket_position[random_bucket_idx-1] + batch_size
+        # check if bucket has enough elements
+        if to_check > bucket_length:
             # remove the entry from buckets, so that it does not get chosen again
             buckets.remove(random_bucket_idx)
+            # if the remaining words are less than 1/4th of the batch size, skip it
+            if bucket_length - bucket_position[random_bucket_idx-1] < batch_size // 4:
+                continue
+            final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
 
         image_batch = []
         label_batch = []
@@ -131,10 +150,10 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
-def validate_recognizer(recognizer, char_vector, r_validate_dataset, batch_size, bucket_size, latent_dim):
+def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, bucket_size, latent_dim, valid1_words):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
-    num_batch_elements = len(r_validate_words) // batch_size
+    num_batch_elements = len(valid1_words) // batch_size
     labels = list(char_vector)
     index2letter = {n: label for n, label in enumerate(labels)}
     print(index2letter)
@@ -145,19 +164,20 @@ def validate_recognizer(recognizer, char_vector, r_validate_dataset, batch_size,
     num_word_total = 0
 
     for i in range(len(num_batch_elements)):
-        image_batch, label_batch = next(r_validate_dataset)
+        image_batch, label_batch = next(valid1_dataset)
 
-        bucket_idx = i
-        fake_labels = np.array([random.choice(r_validate_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
+        print(label_batch)
 
         # calculate time-steps
         time_steps = recognizer(image_batch, training=False)
-        sequence_length_fake = random_bucket_idx + 1
-        inp_len_fake = -1 + sequence_length_fake * 4
+        sequence_length_real = len(label_batch)
+        inp_len_real = -1 + sequence_length_real * 4
+
+        print(inp_len_real)
 
         # decode tim-steps
         decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
-                                                 input_length=np.array([[inp_len_fake]] * batch_size), greedy=False)
+                                                 input_length=np.array([[inp_len_real]] * batch_size), greedy=False)
 
         texts_int, texts_string = [], []
         # convert decoded to string
@@ -173,12 +193,12 @@ def validate_recognizer(recognizer, char_vector, r_validate_dataset, batch_size,
 
         # calculate error rates
         for i in range(len(texts_string)):
-            num_word_ok += 1 if fake_labels[i] == texts_string[i] else 0
+            num_word_ok += 1 if label_batch[i] == texts_string[i] else 0
             num_word_total += 1
-            dist = editdistance.eval(texts_string[i], fake_labels[i])
+            dist = editdistance.eval(texts_string[i], label_batch[i])
             num_char_err += dist
-            num_char_total += len(fake_labels[i])
-            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + fake_labels[i] + '"', '->',
+            num_char_total += len(label_batch[i])
+            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + label_batch[i] + '"', '->',
                   '"' + texts_string[i] + '"')
 
     # print validation result
@@ -189,10 +209,10 @@ def validate_recognizer(recognizer, char_vector, r_validate_dataset, batch_size,
     return char_error_rate, word_accuracy
 
 
-def validate_generator(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim):
+def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, bucket_size, latent_dim, valid2_words):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
-    num_batch_elements = len(validate_words) // batch_size
+    num_batch_elements = len(valid2_words) // batch_size
     labels = list(char_vector)
     index2letter = {n: label for n, label in enumerate(labels)}
     print(index2letter)
@@ -206,7 +226,7 @@ def validate_generator(generator, recognizer, char_vector, validate_words, batch
         # generate latent points + random sequence labels from word list
         noise = tf.random.normal([batch_size, latent_dim])
         random_bucket_idx = random.randint(0, bucket_size - 1)
-        fake_labels = np.array([random.choice(validate_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
+        fake_labels = np.array([random.choice(valid2_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
 
         generated_imgs = generator([noise, fake_labels], training=False)
 
@@ -249,7 +269,7 @@ def validate_generator(generator, recognizer, char_vector, validate_words, batch
     return char_error_rate, word_accuracy
 
 
-def validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim):
+def validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim, valid1_words, valid2_words):
     g_char_err, g_word_err = validate_generator(generator, recognizer, char_vector, validate_words, batch_size,
                                                 bucket_size, latent_dim)
     v_char_err, v_word_err_ = validate_recognizer(recognizer, char_vector, validate_words, batch_size,
@@ -258,8 +278,8 @@ def validate(generator, recognizer, char_vector, validate_words, batch_size, buc
 
 def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminator, recognizer, composite_gan,
           checkpoint, generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, batch_size,
-          epochs, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, random_words, bucket_size,
-          char_vector, train_words, valid1_words, valid2_words):
+          epochs, latent_dim, gen_path, loss_fn, disc_iters, apply_gradient_balance, gradient_balance_type,
+          random_words, bucket_size, char_vector, train_words, valid1_words, valid2_words):
     """
     Whole training procedure
 
@@ -350,7 +370,9 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
                                                                                        discriminator_optimizer,
                                                                                        recognizer_optimizer, batch_size,
                                                                                        latent_dim, loss_fn, disc_iters,
-                                                                                       apply_gradient_balance, random_words,
+                                                                                       apply_gradient_balance,
+                                                                                       gradient_balance_type,
+                                                                                       random_words,
                                                                                        bucket_size, gen_path)
 
             batch_summary.write(str(d_loss) + ";" + str(d_loss_real) + ";" + str(d_loss_fake) + ";" +
@@ -374,7 +396,7 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
-        # char_err, word_err = validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim)
+        # char_err, word_err = validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim, valid1_words, valid2_words)
 
         divider = batch_per_epoch
         epoch_summary.write(str(d_loss_total / divider) + ";" + str(d_loss_real_total / divider) + ";" +
@@ -425,7 +447,7 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
 
 def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discriminator, recognizer, composite_gan,
                generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn,
-               disc_iters, apply_gradient_balance, random_words, bucket_size, gen_path):
+               disc_iters, apply_gradient_balance, gradient_balance_type, random_words, bucket_size, gen_path):
     """
     Single training loop
 
@@ -489,7 +511,8 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
 
         # apply gradient balancing (optional)
         g_loss_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std = apply_gradient_balancing(r_fake_logits,
-                                                                                                        g_loss, alpha=1)
+                                                                                                        g_loss, gradient_balance_type,
+                                                                                                        alpha=1)
         g_loss_added = g_loss + r_fake_logits
         if apply_gradient_balance:
             g_loss_final = g_loss_balanced
@@ -534,7 +557,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
            d_loss_fake_mean.numpy(), g_loss_final_mean.numpy(), alpha, r_loss_fake_std.numpy(), g_loss_std.numpy()
 
 
-def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
+def apply_gradient_balancing(r_fake_logits, g_loss, gradient_balance_type, alpha=1):
     """
     gradient balancing based on https://arxiv.org/pdf/2003.10557.pdf
 
@@ -546,7 +569,12 @@ def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
     # g_loss = - disc_fake_logits
     r_loss_fake_std = tf.math.reduce_std(r_fake_logits)
     g_loss_std = tf.math.reduce_std(g_loss)
-    r_loss_balanced = alpha * (((g_loss_std) / (r_loss_fake_std)) * r_fake_logits)
+    if gradient_balance_type == 1:
+        r_loss_balanced = alpha * (((g_loss_std) / (r_loss_fake_std)) * r_fake_logits)
+    else:
+        r_loss_fake_mean = tf.math.reduce_mean(r_fake_logits)
+        g_loss_mean = tf.math.reduce_mean(g_loss)
+        r_loss_balanced = alpha * (((g_loss_std / r_loss_fake_std) * (r_fake_logits-r_loss_fake_mean)) - g_loss_mean)
     g_balanced = g_loss + r_loss_balanced
     return g_balanced, r_loss_balanced, alpha, r_loss_fake_std, g_loss_std
 

@@ -11,6 +11,7 @@ setup_optimizer.beta_2 = 0.999
 setup_optimizer.loss_fn = @not_saturating       #@not_saturating       #@hinge
 setup_optimizer.disc_iters=1                    #2
 setup_optimizer.apply_gradient_balance=0        #1      #0
+setup_optimizer.gradient_balance_type=0         #0-Alonso et.al.    #1-scrabbleGAN
 setup_optimizer.rmsprop=0                       #0      #1
 
 # Shared specs (G and D)
