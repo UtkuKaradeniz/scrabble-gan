@@ -125,17 +125,11 @@ def main():
 
     # load and preprocess dataset (python generator)
     train_dataset = load_prepare_data(in_dim, batch_size, train_dir, char_vec, bucket_size)
-    while True:
+
+    for i in range(100):
         imgs, labels = next(train_dataset)
-        print(len(imgs))
-        print(labels)
-        fig, ax = plt.subplots(5, 5)
-        for k in range(5):
-            for j in range(5):
-                ax[k, j].imshow(imgs[k * 5 + j], cmap='gray')
-                ax[k, j].text(-5, -10, labels[k * 5 + j], fontsize='xx-small')
-                print(labels[:5])
-        exit(-1)
+        print("batch_size: ", len(imgs))
+
     valid1_dataset = load_prepare_data(in_dim, batch_size, valid1_dir, char_vec, bucket_size)
     valid2_dataset = load_prepare_data(in_dim, batch_size, valid2_dir, char_vec, bucket_size)
 

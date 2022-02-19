@@ -94,30 +94,31 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
     for i in range(1, bucket_size + 1, 1):
         bucket_position.append(0)
         buckets.append(i)
+    buckets = [11, 12]
     while True:
         final_batch_size = None
         # select random bucket
-        random_bucket_idx = np.random.choice(buckets, 1) + 1
+        random_bucket_idx = np.random.choice(buckets, 1)
         random_bucket_idx = int(random_bucket_idx[0])
         print("buckets: ", buckets)
         print("random bucket id: ", random_bucket_idx)
-        print("bucket position: ", bucket_position[random_bucket_idx])
-        if bucket_position[random_bucket_idx] + batch_size > len(data_buckets[random_bucket_idx][1]):
+        print("bucket position: ", bucket_position[random_bucket_idx-1])
+        if bucket_position[random_bucket_idx-1] + batch_size > len(data_buckets[random_bucket_idx][1]):
             # if the bucket has less than the batch size, set final_batch_size
-            final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx]
+            final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
             # remove the entry from buckets, so that it does not get chosen again
             buckets.remove(random_bucket_idx)
 
         image_batch = []
         label_batch = []
 
-        sample_idx = bucket_position[random_bucket_idx]
+        sample_idx = bucket_position[random_bucket_idx-1]
         loop_iter = final_batch_size if final_batch_size is not None else batch_size
         for i in range(loop_iter):
             # retrieve samples from bucket of size batch_size
-            image_batch.append(data_buckets[random_bucket_idx][0][sample_idx])
-            label_batch.append(data_buckets[random_bucket_idx][1][sample_idx])
-        bucket_position[random_bucket_idx] += loop_iter
+            image_batch.append(data_buckets[random_bucket_idx][0][sample_idx + i])
+            label_batch.append(data_buckets[random_bucket_idx][1][sample_idx + i])
+        bucket_position[random_bucket_idx-1] += loop_iter
 
         # convert to numpy array
         image_batch = np.array(image_batch).astype('float32')
