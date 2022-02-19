@@ -98,6 +98,7 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         final_batch_size = None
         # select random bucket
         random_bucket_idx = np.random.choice(buckets, 1) + 1
+        random_bucket_idx = int(random_bucket_idx[0])
         print("buckets: ", buckets)
         print("random bucket id: ", random_bucket_idx)
         print("bucket position: ", bucket_position[random_bucket_idx])
@@ -106,7 +107,6 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
             final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx]
             # remove the entry from buckets, so that it does not get chosen again
             buckets.remove(random_bucket_idx)
-        random_bucket_idx = int(random_bucket_idx[0])
 
         image_batch = []
         label_batch = []
