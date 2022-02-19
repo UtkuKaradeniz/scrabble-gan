@@ -471,7 +471,9 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     """
 
     # generate latent points + random sequence labels from word list
-    noise = tf.random.normal([len(labels), latent_dim])
+    if len(labels) < batch_size:
+        batch_size = len(labels)
+    noise = tf.random.normal([batch_size, latent_dim])
     random_bucket_idx = random.randint(0, bucket_size - 1)
     if len(random_words) != bucket_size:
         print(len(random_words))
@@ -480,7 +482,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         print(random.choice(random_words[random_bucket_idx]))
         raise "load_random_word_list not working"
 
-    fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(len(labels))], np.int32)
+    fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
     print(noise.shape)
     print(fake_labels.shape)
     print(images.shape)
