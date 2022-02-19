@@ -103,7 +103,6 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         final_batch_size = None
         # if we run out of buckets, refill them
         if len(buckets) == 0:
-            exit(-1)
             # reset buckets
             buckets = [i for i in buckets_save]
             # reset bucket positions
@@ -480,9 +479,8 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         print(len(random_words[len(random_words)-1]))
         print(random.choice(random_words[random_bucket_idx]))
         raise "load_random_word_list not working"
-    print(random_bucket_idx)
-    print(len(random_words[random_bucket_idx]))
-    fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
+
+    fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(len(labels))], np.int32)
 
     # obtain shapes
     batch_size_real = images.shape[0]
