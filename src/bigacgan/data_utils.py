@@ -46,8 +46,7 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
     load data into tensor (python generator)
 
     (1) read buckets into memory
-    (2) compute bucket_weights
-    (3) create python generator
+    (2) create python generator
 
     :param input_dim:
     :param batch_size:
@@ -60,7 +59,6 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
     h, w, c = input_dim
 
     data_buckets = {}
-    bucket_weights = {}
     number_samples = 0
 
     # (1) read buckets into memory
@@ -86,29 +84,39 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         shuffled = list(zip(imgs, labels))
         random.shuffle(shuffled)
         imgs_shuffled, labels_shuffled = zip(*shuffled)
+
         data_buckets[i] = (imgs_shuffled, labels_shuffled)
 
-    # (2) compute bucket_weights
+    # (2) create python generator
+    buckets = []
+    # list to keep track of where we are at each bucket
+    bucket_position = []
     for i in range(1, bucket_size + 1, 1):
-        bucket_weights[i] = len(data_buckets[i][1]) / number_samples
-
-    # (3) create python generator
-    # for i in range(1, bucket_size + 1, 1):
-    #     bucket_weights[i] = len(data_buckets[i][1]) / number_samples
-    #     bucket_position
+        bucket_position.append([0])
+        buckets.append(i)
     while True:
+        final_batch_size = None
         # select random bucket
-        random_bucket_idx = np.random.choice(bucket_size, 1) + 1
+        random_bucket_idx = np.random.choice(buckets, 1) + 1
+        print("buckets: ", buckets)
+        print("random bucket id: ", random_bucket_idx)
+        if bucket_position[random_bucket_idx] + batch_size > len(data_buckets[random_bucket_idx][0]):
+            # if the bucket has less than the batch size, set final_batch_size
+            final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx]
+            # remove the entry from buckets, so that it does not get chosen again
+            buckets.remove(random_bucket_idx)
         random_bucket_idx = int(random_bucket_idx[0])
 
         image_batch = []
         label_batch = []
 
-        for i in range(batch_size):
-            # retrieve random samples from bucket of size batch_size
-            sample_idx = random.randint(0, len(data_buckets[random_bucket_idx][1]) - 1)
+        sample_idx = bucket_position[random_bucket_idx]
+        loop_iter = final_batch_size if final_batch_size is not None else batch_size
+        for i in range(loop_iter):
+            # retrieve samples from bucket of size batch_size
             image_batch.append(data_buckets[random_bucket_idx][0][sample_idx])
             label_batch.append(data_buckets[random_bucket_idx][1][sample_idx])
+        bucket_position[random_bucket_idx] += loop_iter
 
         # convert to numpy array
         image_batch = np.array(image_batch).astype('float32')

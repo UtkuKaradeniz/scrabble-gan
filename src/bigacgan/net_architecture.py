@@ -34,7 +34,7 @@ def make_recognizer(input_dim, output_classes, vis_model=True):
     conv_3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same', strides=1)(pool_2)
     # ============================================= 4th layer ==============================================#
     conv_4 = layers.Conv2D(256, (3, 3), activation='relu', padding='same', strides=1)(conv_3)
-    # "In the 3rd and the 4th max-pooling layers, we adopt 1x2 sized rectangular pooling windows instead"
+    # "In the 3rd and the 4th max-pooling layers, we adopt 2x1 sized rectangular pooling windows instead"
     pool_4 = layers.MaxPool2D(pool_size=(2, 1))(conv_4)
     # ============================================= 5th layer ==============================================#
     conv_5 = layers.Conv2D(filters=512, kernel_size=3, activation='relu', padding='same', strides=1)(pool_4)
@@ -53,6 +53,7 @@ def make_recognizer(input_dim, output_classes, vis_model=True):
 
     # Per frame predictions (skip RNN layers -> avoid learning implicit language model)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(map_to_seq)
+
 
     model = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
 
@@ -101,20 +102,18 @@ def my_recognizer(input_dim, output_classes, restore=False):
     pool_5 = layers.MaxPool2D(pool_size=(2, 1), strides=(2, 1), padding='valid')(lrelu_5)
     # ============================================= 6th layer ==============================================#
     drop_5 = layers.Dropout(rate=0.2)(pool_5)
-    conv_6 = layers.Conv2D(filters=112, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_5)
+    conv_6 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_5)
     bnorm_6 = layers.BatchNormalization()(conv_6)
     lrelu_6 = layers.LeakyReLU(alpha=0.01)(bnorm_6)
     # ============================================= 7th layer ==============================================#
     drop_6 = layers.Dropout(rate=0.2)(lrelu_6)
-    conv_7 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_6)
+    conv_7 = layers.Conv2D(filters=144, kernel_size=(3, 3), strides=(1, 1), padding='same')(drop_6)
     bnorm_7 = layers.BatchNormalization()(conv_7)
     lrelu_7 = layers.LeakyReLU(alpha=0.01)(bnorm_7)
     # ============================================= RNN Layers ==============================================#
-    shape = lrelu_7.shape
 
     # (None, 1, X, 512) -> (None, X, 512)
     blstm = layers.Lambda(lambda x: tf.keras.backend.squeeze(x, 1))(lrelu_7)
-    # blstm = layers.Reshape((shape[1], shape[2] * shape[3]))(lrelu_5)
 
     blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
     blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
@@ -122,7 +121,7 @@ def my_recognizer(input_dim, output_classes, restore=False):
     blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
     blstm = layers.Bidirectional(layers.LSTM(units=256, return_sequences=True, dropout=0.5))(blstm)
 
-    # Per frame predictions (skip RNN layers -> avoid learning implicit language model)
+    # time steps calculation
     blstm = layers.Dropout(rate=0.5)(blstm)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(blstm)
 
