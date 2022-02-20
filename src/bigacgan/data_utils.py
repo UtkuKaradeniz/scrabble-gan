@@ -564,11 +564,6 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     # obtain shapes
     batch_size_real = images.shape[0]
     sequence_length_real = len(labels[0])
-    print(fake_labels)
-    print(fake_labels.dtype)
-    print(fake_labels[0])
-    print(fake_labels[0].dtype)
-    print(len(fake_labels[0]))
     sequence_length_fake = len(fake_labels[0])
 
     # compute loss & update gradients
