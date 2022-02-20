@@ -317,7 +317,7 @@ def prepare_gan_input(batch_size, latent_dim, random_words, bucket_size, buckets
     if to_check > bucket_length:
         # remove the entry from buckets, so that it does not get chosen again
         buckets.remove(random_bucket_idx)
-        return -1, np.array([-1])
+        return None, None
 
     # get the next batch of fake labels from bucket
     sample_idx = bucket_position[random_bucket_idx]
@@ -439,10 +439,8 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
             noise, fake_labels = prepare_gan_input(batch_size, latent_dim, random_words, bucket_size, buckets,
                                                    bucket_position)
 
-            print(fake_labels)
-
             # if we ran out of a bucket in random words, choose another
-            if fake_labels.any() == -1:
+            if fake_labels is None:
                 continue
 
             # training step
