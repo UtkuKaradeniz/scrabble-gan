@@ -54,7 +54,6 @@ def make_recognizer(input_dim, output_classes, vis_model=True):
     # Per frame predictions (skip RNN layers -> avoid learning implicit language model)
     per_frame_predictions = tf.keras.layers.Dense(output_classes, activation='softmax')(map_to_seq)
 
-
     model = tf.keras.Model(inputs=inp_imgs, outputs=per_frame_predictions)
 
     if vis_model:

@@ -10,6 +10,7 @@ import editdistance
 import imageio
 import matplotlib.pyplot as plt
 import random
+from word_beam_search import WordBeamSearch
 from src.bigacgan.net_architecture import ctc_loss
 
 
@@ -122,10 +123,11 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         if to_check > bucket_length:
             # remove the entry from buckets, so that it does not get chosen again
             buckets.remove(random_bucket_idx)
-            # if the remaining words are less than 1/4th of the batch size, skip it
-            if bucket_length - bucket_position[random_bucket_idx-1] < batch_size // 4:
-                continue
-            final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
+            continue
+            # # if the remaining words are less than 1/4th of the batch size, skip it
+            # if bucket_length - bucket_position[random_bucket_idx-1] < batch_size // 4:
+            #     continue
+            # final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
 
         image_batch = []
         label_batch = []
@@ -149,130 +151,182 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
-def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, bucket_size, latent_dim, valid1_words):
+def validate_batch(char_vector, labels, time_steps, decoded, wbs):
+    num_char_err_vb = 0
+    num_char_err_wb = 0
+    num_char_total = 0
+
+    wbs_in = tf.transpose(time_steps, perm=[1, 0, 2])
+    # decode time-steps with WordBeamSearch
+    label_str = wbs.compute(wbs_in)
+
+    char_str_wb, char_str_vb = [], []
+
+    # remove CTC-blank label
+    decode = [[[int(p) for p in x if p != -1] for x in y] for y in decoded]
+    decode = decode[0]
+
+    # convert vanillaBeamSearch vectors to words
+    for text in decode:
+        # vector to chars and chars to words
+        char_str_vb.append(''.join([char_vector[label] for label in text]))
+
+    # convert WordBeamSearch vectors to words
+    for curr_label_str in label_str:
+        char_str_wb.append(''.join([char_vector[label] for label in curr_label_str]))
+
+    assert len(char_str_vb) == len(char_str_wb)
+
+    fake_words = []
+    for vector in labels:
+        fake_words.append(''.join([char_vector[label] for label in vector]))
+
+    # calculate error rates
+    for i in range(len(char_str_vb)):
+        dist_vb = editdistance.eval(char_str_vb[i], fake_words[i])
+        num_char_err_vb += dist_vb
+
+        dist_wb = editdistance.eval(char_str_wb[i], fake_words[i])
+        num_char_err_wb += dist_wb
+
+        num_char_total += len(labels[i])
+
+        print('vanillaBeam : [OK]' if dist_vb == 0 else 'vanillaBeam : [ERR:%d]' % dist_vb, '"' +
+              fake_words[i] + '"', '->', '"' + char_str_vb[i] + '"')
+        print('wordBeam : [OK]' if dist_wb == 0 else 'wordBeam : [ERR:%d]' % dist_wb, '"' + fake_words[i]
+              + '"', '->', '"' + char_str_wb[i] + '"')
+
+    return num_char_err_vb, num_char_err_wb, num_char_total
+
+
+def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words, wbs):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
     num_batch_elements = len(valid1_words) // batch_size
-    labels = list(char_vector)
-    index2letter = {n: label for n, label in enumerate(labels)}
-    print(index2letter)
 
-    num_char_err = 0
+    num_char_err_vb = 0
+    num_char_err_wb = 0
     num_char_total = 0
-    num_word_ok = 0
-    num_word_total = 0
 
-    for i in range(len(num_batch_elements)):
+    for i in range(num_batch_elements):
         image_batch, label_batch = next(valid1_dataset)
-
-        print(label_batch)
+        real_labels = label_batch
 
         # calculate time-steps
         time_steps = recognizer(image_batch, training=False)
-        sequence_length_real = len(label_batch)
+
+        sequence_length_real = len(real_labels[0])
         inp_len_real = -1 + sequence_length_real * 4
-
-        print(inp_len_real)
-
-        # decode tim-steps
+        input_length = np.asarray([inp_len_real for _ in range(len(np.asarray(time_steps)))])
+        # decode time-steps
         decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
-                                                 input_length=np.array([[inp_len_real]] * batch_size), greedy=False)
+                                                 input_length=input_length, greedy=False, beam_width=50)
 
-        texts_int, texts_string = [], []
-        # convert decoded to string
-        decode = [[[int(p) for p in x if p != -1] for x in y] for y in decoded]
-        texts_int.extend(np.swapaxes(decode, 0, 1))
-        for text in texts_int:
-            # get list object
-            text = text[0]
-            # vector to chars
-            ll = [index2letter[i - 1] for i in text]
-            # chars to words
-            texts_string.append(''.join(ll))
+        char_err_vb, char_err_wb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, wbs)
 
-        # calculate error rates
-        for i in range(len(texts_string)):
-            num_word_ok += 1 if label_batch[i] == texts_string[i] else 0
-            num_word_total += 1
-            dist = editdistance.eval(texts_string[i], label_batch[i])
-            num_char_err += dist
-            num_char_total += len(label_batch[i])
-            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + label_batch[i] + '"', '->',
-                  '"' + texts_string[i] + '"')
+        num_char_err_vb += char_err_vb
+        num_char_err_wb += char_err_wb
+        num_char_total += char_total
 
-    # print validation result
-    char_error_rate = num_char_err / num_char_total
-    word_accuracy = num_word_ok / num_word_total
-    print(f'Character error rate: {char_error_rate * 100.0}%. Word accuracy: {word_accuracy * 100.0}%.')
+    char_error_rate_vb = num_char_err_vb / num_char_total
+    char_error_rate_wb = num_char_err_wb / num_char_total
+    print(f'Rec. Character error rate (VanillaBeam Search): {num_char_err_vb * 100.0}%. '
+          f'Rec. Character error rate (WordBeam Search): {char_error_rate_wb * 100.0}%')
 
-    return char_error_rate, word_accuracy
+    return char_error_rate_vb, char_error_rate_wb
 
 
-def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, bucket_size, latent_dim, valid2_words):
+def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words, wbs):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
     num_batch_elements = len(valid2_words) // batch_size
-    labels = list(char_vector)
-    index2letter = {n: label for n, label in enumerate(labels)}
-    print(index2letter)
 
-    num_char_err = 0
+    num_char_err_vb = 0
+    num_char_err_wb = 0
     num_char_total = 0
-    num_word_ok = 0
-    num_word_total = 0
 
-    for i in range(len(num_batch_elements)):
-        # generate latent points + random sequence labels from word list
+    for i in range(num_batch_elements):
+        _, label_batch = next(valid2_dataset)
+
+        # generate latent points + take labels form valid2 dataset
         noise = tf.random.normal([batch_size, latent_dim])
-        random_bucket_idx = random.randint(0, bucket_size - 1)
-        fake_labels = np.array([random.choice(valid2_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
+        fake_labels = label_batch
 
+        # generate fake images
         generated_imgs = generator([noise, fake_labels], training=False)
 
-        # calculate time-steps
+        # predict images / calculate time-steps
         time_steps = recognizer(generated_imgs, training=False)
-        sequence_length_fake = random_bucket_idx + 1
+
+        sequence_length_fake = len(fake_labels[0])
         inp_len_fake = -1 + sequence_length_fake * 4
+        input_length = np.asarray([inp_len_fake for _ in range(len(np.asarray(time_steps)))])
+        # decode time-steps with vanillaBeamSearch
+        decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps, input_length=input_length, greedy=False,
+                                                 beam_width=50)
 
-        # decode tim-steps
-        decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
-                                                   input_length=np.array([[inp_len_fake]] * batch_size), greedy=False)
+        char_err_vb, char_err_wb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, wbs)
 
-        texts_int, texts_string = [], []
-        # convert decoded to string
-        decode = [[[int(p) for p in x if p != -1] for x in y] for y in decoded]
-        texts_int.extend(np.swapaxes(decode, 0, 1))
-        for text in texts_int:
-            # get list object
-            text = text[0]
-            # vector to chars
-            ll = [index2letter[i - 1] for i in text]
-            # chars to words
-            texts_string.append(''.join(ll))
-
-        # calculate error rates
-        for i in range(len(texts_string)):
-            num_word_ok += 1 if fake_labels[i] == texts_string[i] else 0
-            num_word_total += 1
-            dist = editdistance.eval(texts_string[i], fake_labels[i])
-            num_char_err += dist
-            num_char_total += len(fake_labels[i])
-            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + fake_labels[i] + '"', '->',
-                  '"' + texts_string[i] + '"')
+        num_char_err_vb += char_err_vb
+        num_char_err_wb += char_err_wb
+        num_char_total += char_total
 
     # print validation result
-    char_error_rate = num_char_err / num_char_total
-    word_accuracy = num_word_ok / num_word_total
-    print(f'Character error rate: {char_error_rate * 100.0}%. Word accuracy: {word_accuracy * 100.0}%.')
+    char_error_rate_vb = num_char_err_vb / num_char_total
+    char_error_rate_wb = num_char_err_wb / num_char_total
+    print(f'Gen. Character error rate (VanillaBeam Search): {num_char_err_vb * 100.0}%. '
+          f'Gen. Character error rate (WordBeam Search): {char_error_rate_wb * 100.0}%')
 
-    return char_error_rate, word_accuracy
+    return char_error_rate_vb, char_error_rate_wb
 
 
-def validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim, valid1_words, valid2_words):
-    g_char_err, g_word_err = validate_generator(generator, recognizer, char_vector, validate_words, batch_size,
-                                                bucket_size, latent_dim)
-    v_char_err, v_word_err_ = validate_recognizer(recognizer, char_vector, validate_words, batch_size,
-                                                  bucket_size, latent_dim)
+def validate(generator, recognizer, char_vector, valid1_dataset, valid2_dataset, batch_size, latent_dim,
+             valid1_words, valid2_words, train_words):
+    chars = word_chars = char_vector
+    corpus = ' '.join(valid1_words + valid2_words + train_words)
+    wbs = WordBeamSearch(50, 'NGrams', 0.0, corpus.encode('utf8'), chars.encode('utf8'), word_chars.encode('utf8'))
+
+    # validate recognizer
+    r_err_vb, r_err_wb = validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words, wbs)
+
+    # validate generator
+    g_err_vb, g_err_wb = validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim,
+                                            valid2_words, wbs)
+
+    return g_err_vb, g_err_wb, r_err_vb, r_err_wb
+
+
+def prepare_gan_input(batch_size, latent_dim, random_words, bucket_size, buckets, bucket_position):
+    # prepare Gen. input
+    noise = tf.random.normal([batch_size, latent_dim])
+    random_bucket_idx = np.random.choice(buckets, 1)
+    random_bucket_idx = random_bucket_idx[0]
+
+    # random_bucket_idx = len(labels[0]) - 1
+    if len(random_words) != bucket_size:
+        print(len(random_words))
+        print(bucket_size)
+        print(len(random_words[len(random_words) - 1]))
+        print(random.choice(random_words[random_bucket_idx]))
+        raise "load_random_word_list not working"
+
+    bucket_length = len(random_words[random_bucket_idx])
+    to_check = bucket_position[random_bucket_idx] + batch_size
+
+    # check if bucket has enough elements
+    if to_check > bucket_length:
+        # remove the entry from buckets, so that it does not get chosen again
+        buckets.remove(random_bucket_idx)
+        return -1, np.array([-1])
+
+    # get the next batch of fake labels from bucket
+    sample_idx = bucket_position[random_bucket_idx]
+    fake_labels = np.array([random_words[random_bucket_idx][sample_idx + i] for i in range(batch_size)], np.int32)
+
+    # increment last bucket position
+    bucket_position[random_bucket_idx] += batch_size
+
+    return noise, fake_labels
 
 
 def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminator, recognizer, composite_gan,
@@ -306,7 +360,7 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
     :param char_vector:                 valid vocabulary represented as array of chars/ string
     :return:
     """
-    train_sample_size = len(train_words)
+    train_sample_size = sum(len(bucket) for bucket in random_words)
     batch_per_epoch = int(train_sample_size / batch_size) + 1
 
     print('no. training samples: ', train_sample_size)
@@ -333,9 +387,21 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
 
     # write headers to files
     header = "disc_loss;disc_loss_real;disc_loss_fake;r_loss_real;r_loss_fake;r_loss_balanced;g_loss;g_lossT;g_lossS;" \
-             "g_loss_final;alpha;r_loss_fake_std;g_loss_std\n"
-    epoch_summary.write(header)
-    batch_summary.write(header)
+             "g_loss_final;alpha;r_loss_fake_std;g_loss_std"
+    epoch_summary.write(header + "cer_g_wb;cer_g_vb;cer_r_wb;cer_r_vb\n")
+    batch_summary.write(header + "\n")
+
+    # list to keep track of which buckets have elements and its save
+    buckets = []
+    buckets_save = []
+    # list to keep track of where we are at each bucket and its save
+    bucket_position = []
+    bucket_position_save = []
+    for i in range(0, bucket_size, 1):
+        bucket_position.append(0)
+        bucket_position_save.append(0)
+        buckets.append(i)
+        buckets_save.append(i)
 
     # training loop
     print('training...')
@@ -358,8 +424,26 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
         alphas = 0.0
 
         for batch_idx in range(batch_per_epoch):
+            # get new train batch for Recognizer
             image_batch, label_batch = next(train_dataset)
 
+            # if we run out of buckets, refill them and continue
+            if len(buckets) == 0:
+                # reset buckets
+                buckets = [i for i in buckets_save]
+                # reset bucket positions
+                bucket_position = [j for j in bucket_position_save]
+                continue
+
+            # get noise and fake labels for Generator
+            noise, fake_labels = prepare_gan_input(batch_size, latent_dim, random_words, bucket_size, buckets,
+                                                   bucket_position)
+
+            # if we ran out of a bucket in random words, choose another
+            if fake_labels.any() == -1:
+                continue
+
+            # training step
             r_loss_fake, r_loss_real, r_loss_balanced, g_loss, g_loss_added, g_loss_balanced, d_loss, d_loss_real, \
             d_loss_fake, g_loss_final, alpha, r_loss_fake_std, g_loss_std = train_step(epoch_idx, batch_idx,
                                                                                        batch_per_epoch, image_batch,
@@ -368,12 +452,12 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
                                                                                        generator_optimizer,
                                                                                        discriminator_optimizer,
                                                                                        recognizer_optimizer, batch_size,
-                                                                                       latent_dim, loss_fn, disc_iters,
+                                                                                       loss_fn, disc_iters,
                                                                                        apply_gradient_balance,
                                                                                        gradient_balance_type,
-                                                                                       random_words,
-                                                                                       bucket_size, gen_path)
+                                                                                       noise, fake_labels)
 
+            # write batch summary to file
             batch_summary.write(str(d_loss) + ";" + str(d_loss_real) + ";" + str(d_loss_fake) + ";" +
                                 str(r_loss_real) + ";" + str(r_loss_fake) + ";" + str(r_loss_balanced) + ";" +
                                 str(g_loss) + ";" + str(g_loss_added) + ";" + str(g_loss_balanced) + ";" +
@@ -395,7 +479,10 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
             r_loss_fake_std_total += r_loss_fake_std
             alphas += alpha
 
-        # char_err, word_err = validate(generator, recognizer, char_vector, validate_words, batch_size, bucket_size, latent_dim, valid1_words, valid2_words)
+        # validate Generator and Recognizer with CER
+        g_err_wb, g_err_vb, r_err_wb, r_err_vb = validate(generator, recognizer, char_vector, valid1_dataset,
+                                                          valid2_dataset, batch_size, latent_dim, valid1_words,
+                                                          valid2_words, train_words)
 
         divider = batch_per_epoch
         epoch_summary.write(str(d_loss_total / divider) + ";" + str(d_loss_real_total / divider) + ";" +
@@ -404,7 +491,8 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
                             str(g_loss_total / divider) + ";" + str(g_loss_added_total / divider) + ";" +
                             str(g_loss_balanced_total / divider) + ";" + str(g_loss_final_total / divider) + ";" +
                             str(alphas / divider) + ";" + str(r_loss_fake_std_total / divider) + ";" +
-                            str(g_loss_std_total / divider) + ";" + '\n')
+                            str(g_loss_std_total / divider) + ";" + str(g_err_wb) + ";" + str(g_err_vb) + ";" +
+                            str(r_err_wb) + ";" + str(r_err_vb) + ";" + '\n')
 
         # produce images for visual evaluation - quantitative
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
@@ -426,7 +514,10 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
 
         print('Time for epoch {} is {} sec'.format(epoch_idx + 1, time.time() - start))
 
-        # # if best validation accuracy so far, save model parameters
+        for sublist in random_words:
+            random.shuffle(sublist)
+
+        #     # if best validation accuracy so far, save model parameters
         # if char_err < best_char_error_rate:
         #     print('Character error rate improved, save model')
         #     best_char_error_rate = char_err
@@ -445,8 +536,8 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
 
 
 def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discriminator, recognizer, composite_gan,
-               generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, latent_dim, loss_fn,
-               disc_iters, apply_gradient_balance, gradient_balance_type, random_words, bucket_size, gen_path):
+               generator_optimizer, discriminator_optimizer, recognizer_optimizer, batch_size, loss_fn, disc_iters,
+               apply_gradient_balance, gradient_balance_type, noise, fake_labels):
     """
     Single training loop
 
@@ -470,34 +561,16 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
     :return:
     """
 
-    # generate latent points + random sequence labels from word list
-    if len(labels) < batch_size:
-        batch_size = len(labels)
-    noise = tf.random.normal([batch_size, latent_dim])
-    # random_bucket_idx = random.randint(0, bucket_size - 1)
-    random_bucket_idx = len(labels[0]) - 1
-    if len(random_words) != bucket_size:
-        print(len(random_words))
-        print(bucket_size)
-        print(len(random_words[len(random_words)-1]))
-        print(random.choice(random_words[random_bucket_idx]))
-        raise "load_random_word_list not working"
-
-    fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
-    print(noise.shape)
-    print(fake_labels.shape)
-    print(images.shape)
     # obtain shapes
     batch_size_real = images.shape[0]
     sequence_length_real = len(labels[0])
-    sequence_length_fake = random_bucket_idx + 1
+    sequence_length_fake = len(fake_labels[0])
 
     # compute loss & update gradients
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape, tf.GradientTape() as rec_tape:
         # generate images + compute D(fake) + R(fake)
         inp_len_fake = -1 + sequence_length_fake * 4
-        print(sequence_length_fake)
-        print(inp_len_fake)
+
         gen_images, d_fake_logits, r_fake_logits = composite_gan(
             [noise, fake_labels, np.array([[inp_len_fake]] * batch_size),
              np.array([[sequence_length_fake]] * batch_size)], training=True)
@@ -508,6 +581,7 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
         # compute R(real)
         inp_len_real = -1 + sequence_length_real * 4
         time_steps = recognizer(images, training=True)
+
         r_real_logits = ctc_loss(labels, time_steps, np.array([[inp_len_real]] * batch_size_real),
                                  np.array([[sequence_length_real]] * batch_size_real))
 
