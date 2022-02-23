@@ -373,7 +373,7 @@ def main():
     test_dir = read_dir + '-' + 'test' + '/'
     # convert test dataset to GAN format
     if not os.path.exists(test_dir):
-        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='train')
+        init_reading(raw_dir, read_dir, in_dim, bucket_size, mode='test')
     # create output directory
     if not os.path.exists(gen_path):
         os.makedirs(gen_path)

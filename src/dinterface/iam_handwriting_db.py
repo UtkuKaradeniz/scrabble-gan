@@ -76,16 +76,16 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
 
                 # read image (grayscale mode) and resize to common data size
                 img = cv2.imread(os.path.join(input_dir, file), 0)
-                print(os.path.join(input_dir, file))
+                # print(os.path.join(input_dir, file))
                 try:
                     resized_img = cv2.resize(img, (int(h / 2) * len_word, h))
 
                     # compute transcription length and save to corresponding output bucket
                     transcription_length = len(transcription)
                     output_bucket = os.path.join(output_dir, str(transcription_length))
-                    print(transcription_length)
-                    print(transcription)
-                    print(output_bucket)
+                    # print(transcription_length)
+                    # print(transcription)
+                    # print(output_bucket)
 
 
                     if transcription_length <= bucket_size:
