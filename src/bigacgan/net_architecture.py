@@ -302,7 +302,9 @@ def make_discriminator(input_dim, kernel_reg, blocks_with_attention, vis_model=T
     h, w, c = input_dim
     w = None
     in_channels, out_channels = get_in_out_channels_disc(colors=c, resolution=h)
-
+    print("disc info:")
+    print(in_channels)
+    print(out_channels)
     num_blocks = len(in_channels)
 
     x = layers.Input(shape=(h, w, c))

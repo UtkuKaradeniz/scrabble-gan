@@ -26,7 +26,7 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
     output_dir = output_dir + '-' + mode + '/'
     if not os.path.exists(output_dir):
         for i in range(bucket_size):
-            # create buckets (in this work, words longer than 10 chars are for the sake of simplicity ignored)
+            # create buckets (in this work, words longer than 12 chars are for the sake of simplicity ignored)
             os.makedirs(output_dir + str(i + 1) + '/')
 
     # (1) get list of all files in directory tree res/data/iamDB/img/

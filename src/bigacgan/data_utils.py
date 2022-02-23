@@ -153,12 +153,12 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
 
 def validate_batch(char_vector, labels, time_steps, decoded, wbs):
     num_char_err_vb = 0
-    num_char_err_wb = 0
+    # num_char_err_wb = 0
     num_char_total = 0
 
-    wbs_in = tf.transpose(time_steps, perm=[1, 0, 2])
-    # decode time-steps with WordBeamSearch
-    label_str = wbs.compute(wbs_in)
+    # wbs_in = tf.transpose(time_steps, perm=[1, 0, 2])
+    # # decode time-steps with WordBeamSearch
+    # label_str = wbs.compute(wbs_in)
 
     char_str_wb, char_str_vb = [], []
 
@@ -171,11 +171,11 @@ def validate_batch(char_vector, labels, time_steps, decoded, wbs):
         # vector to chars and chars to words
         char_str_vb.append(''.join([char_vector[label] for label in text]))
 
-    # convert WordBeamSearch vectors to words
-    for curr_label_str in label_str:
-        char_str_wb.append(''.join([char_vector[label] for label in curr_label_str]))
-
-    assert len(char_str_vb) == len(char_str_wb)
+    # # convert WordBeamSearch vectors to words
+    # for curr_label_str in label_str:
+    #     char_str_wb.append(''.join([char_vector[label] for label in curr_label_str]))
+    #
+    # assert len(char_str_vb) == len(char_str_wb)
 
     fake_words = []
     for vector in labels:
@@ -186,17 +186,17 @@ def validate_batch(char_vector, labels, time_steps, decoded, wbs):
         dist_vb = editdistance.eval(char_str_vb[i], fake_words[i])
         num_char_err_vb += dist_vb
 
-        dist_wb = editdistance.eval(char_str_wb[i], fake_words[i])
-        num_char_err_wb += dist_wb
+        # dist_wb = editdistance.eval(char_str_wb[i], fake_words[i])
+        # num_char_err_wb += dist_wb
 
         num_char_total += len(labels[i])
 
         print('vanillaBeam : [OK]' if dist_vb == 0 else 'vanillaBeam : [ERR:%d]' % dist_vb, '"' +
               fake_words[i] + '"', '->', '"' + char_str_vb[i] + '"')
-        print('wordBeam : [OK]' if dist_wb == 0 else 'wordBeam : [ERR:%d]' % dist_wb, '"' + fake_words[i]
-              + '"', '->', '"' + char_str_wb[i] + '"')
+        # print('wordBeam : [OK]' if dist_wb == 0 else 'wordBeam : [ERR:%d]' % dist_wb, '"' + fake_words[i]
+        #       + '"', '->', '"' + char_str_wb[i] + '"')
 
-    return num_char_err_vb, num_char_err_wb, num_char_total
+    return num_char_err_vb, num_char_total
 
 
 def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words, wbs):
@@ -222,27 +222,26 @@ def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, val
         decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
                                                  input_length=input_length, greedy=False, beam_width=50)
 
-        char_err_vb, char_err_wb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, wbs)
+        char_err_vb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, -1)
 
         num_char_err_vb += char_err_vb
-        num_char_err_wb += char_err_wb
+        # num_char_err_wb += char_err_wb
         num_char_total += char_total
 
     char_error_rate_vb = num_char_err_vb / num_char_total
-    char_error_rate_wb = num_char_err_wb / num_char_total
-    print(f'Rec. Character error rate (VanillaBeam Search): {num_char_err_vb * 100.0}%. '
-          f'Rec. Character error rate (WordBeam Search): {char_error_rate_wb * 100.0}%')
+    # char_error_rate_wb = num_char_err_wb / num_char_total
+    print(f'Rec. Character error rate (VanillaBeam Search): {char_error_rate_vb * 100.0}%.')
 
-    return char_error_rate_vb, char_error_rate_wb
+    return char_error_rate_vb
 
 
-def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words, wbs):
+def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
     num_batch_elements = len(valid2_words) // batch_size
 
     num_char_err_vb = 0
-    num_char_err_wb = 0
+    # num_char_err_wb = 0
     num_char_total = 0
 
     for i in range(num_batch_elements):
@@ -265,35 +264,37 @@ def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch
         decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps, input_length=input_length, greedy=False,
                                                  beam_width=50)
 
-        char_err_vb, char_err_wb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, wbs)
+        char_err_vb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, -1)
 
         num_char_err_vb += char_err_vb
-        num_char_err_wb += char_err_wb
+        # num_char_err_wb += char_err_wb
         num_char_total += char_total
 
     # print validation result
     char_error_rate_vb = num_char_err_vb / num_char_total
-    char_error_rate_wb = num_char_err_wb / num_char_total
-    print(f'Gen. Character error rate (VanillaBeam Search): {num_char_err_vb * 100.0}%. '
-          f'Gen. Character error rate (WordBeam Search): {char_error_rate_wb * 100.0}%')
+    # char_error_rate_wb = num_char_err_wb / num_char_total
+    print(f'Gen. Character error rate (VanillaBeam Search): {char_error_rate_vb * 100.0}%. ')
 
-    return char_error_rate_vb, char_error_rate_wb
+    return char_error_rate_vb
 
 
 def validate(generator, recognizer, char_vector, valid1_dataset, valid2_dataset, batch_size, latent_dim,
              valid1_words, valid2_words, train_words):
-    chars = word_chars = char_vector
-    corpus = ' '.join(valid1_words + valid2_words + train_words)
-    wbs = WordBeamSearch(50, 'NGrams', 0.0, corpus.encode('utf8'), chars.encode('utf8'), word_chars.encode('utf8'))
+    # chars = word_chars = char_vector
+    # corpus = ' '.join(valid1_words + valid2_words + train_words)
+    # wbs = WordBeamSearch(50, 'NGrams', 0.0, corpus.encode('utf8'), chars.encode('utf8'), word_chars.encode('utf8'))
 
     # validate recognizer
-    r_err_vb, r_err_wb = validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words, wbs)
+    # r_err_vb, r_err_wb = validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words, wbs)
+    r_err_vb = validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words)
 
     # validate generator
-    g_err_vb, g_err_wb = validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim,
-                                            valid2_words, wbs)
+    # g_err_vb, g_err_wb = validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim,
+    #                                         valid2_words, wbs)
+    g_err_vb = validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim,
+                                  valid2_words)
 
-    return g_err_vb, g_err_wb, r_err_vb, r_err_wb
+    return g_err_vb, r_err_vb
 
 
 def prepare_gan_input(batch_size, latent_dim, random_words, bucket_size, buckets, bucket_position):
@@ -480,9 +481,8 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
             alphas += alpha
 
         # validate Generator and Recognizer with CER
-        g_err_wb, g_err_vb, r_err_wb, r_err_vb = validate(generator, recognizer, char_vector, valid1_dataset,
-                                                          valid2_dataset, batch_size, latent_dim, valid1_words,
-                                                          valid2_words, train_words)
+        g_err_vb, r_err_vb = validate(generator, recognizer, char_vector, valid1_dataset, valid2_dataset, batch_size,
+                                      latent_dim, valid1_words, valid2_words, train_words)
 
         divider = batch_per_epoch
         epoch_summary.write(str(d_loss_total / divider) + ";" + str(d_loss_real_total / divider) + ";" +
@@ -491,8 +491,7 @@ def train(train_dataset, valid1_dataset, valid2_dataset, generator, discriminato
                             str(g_loss_total / divider) + ";" + str(g_loss_added_total / divider) + ";" +
                             str(g_loss_balanced_total / divider) + ";" + str(g_loss_final_total / divider) + ";" +
                             str(alphas / divider) + ";" + str(r_loss_fake_std_total / divider) + ";" +
-                            str(g_loss_std_total / divider) + ";" + str(g_err_wb) + ";" + str(g_err_vb) + ";" +
-                            str(r_err_wb) + ";" + str(r_err_vb) + ";" + '\n')
+                            str(g_loss_std_total / divider) + ";" + str(g_err_vb) + ";" + str(r_err_vb) + ";" + '\n')
 
         # produce images for visual evaluation - quantitative
         generate_and_save_images(generator, epoch_idx + 1, seed_labels, gen_path, char_vector)
