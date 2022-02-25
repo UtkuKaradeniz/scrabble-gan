@@ -370,10 +370,10 @@ def test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec):
 
 def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, ep_id1, ep_id2):
     base_ckpt_path = os.path.dirname(os.path.dirname(ckpt_path)) + '/'
-    ckpt_path_gen_1 = base_ckpt_path + ex_id1 + '/generator/' + ep_id1
-    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id1
-    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id2
-    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id2
+    ckpt_path_gen_1 = base_ckpt_path + ex_id1 + '/generator/' + ep_id1 + '/'
+    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id1 + '/'
+    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id2 + '/'
+    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id2 + '/'
 
     print(ckpt_path_gen_1)
     print(ckpt_path_gen_2)
