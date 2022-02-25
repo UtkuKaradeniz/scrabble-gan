@@ -125,19 +125,14 @@ def load_test_data(input_dim, batch_size, reading_dir, char_vector, bucket_size)
 
         bucket_length = len(data_buckets[random_bucket_idx][1])
         to_check = bucket_position[random_bucket_idx-1] + batch_size
-        print("chosen bucket: ", random_bucket_idx)
-        print("bucket length: ", bucket_length)
-        print("enough place?: ", to_check)
+
         # check if bucket has enough elements
         if to_check > bucket_length:
-            print("Not enough place!")
-            print("bucket ", str(random_bucket_idx), " removed")
             # remove the entry from buckets, so that it does not get chosen again
             buckets.remove(random_bucket_idx)
             # new/final batch size to put the remaining words of the bucket into
             if bucket_length - bucket_position[random_bucket_idx-1] < batch_size:
                 final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
-                print("final batch size: ", final_batch_size)
 
         image_batch = []
         label_batch = []
@@ -373,17 +368,60 @@ def test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec):
     return my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err
 
 
-def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, id1, id2):
-    ckpt_path_gen_1 = ckpt_path + '/generator/' + id1
-    ckpt_path_srec = ckpt_path + '/recognizer/' + id1
-    ckpt_path_gen_2 = ckpt_path + '/generator/' + id2
-    ckpt_path_myrec = ckpt_path + '/generator/' + id2
+def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, ep_id1, ep_id2):
+    base_ckpt_path = os.path.dirname(os.path.dirname(ckpt_path)) + '/'
+    ckpt_path_gen_1 = base_ckpt_path + ex_id1 + '/generator/' + ep_id1
+    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id1
+    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id2
+    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id2
 
     print(ckpt_path_gen_1)
     print(ckpt_path_gen_2)
-    print(ckpt_path_gen_2)
+    print(ckpt_path_srec)
     print(ckpt_path_myrec)
+    if os.name == 'nt':
+        ckpt_path_gen_1 = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final60\\generator\\95\\'
+        test_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-test\\'
+        raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
+        gen_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\ex30'
 
+    # load gen_1
+    latest_checkpoint_gen_1 = tf.train.latest_checkpoint(ckpt_path_gen_1)
+    # if model must be restored (for inference), there must be a snapshot
+    if not latest_checkpoint_gen_1:
+        raise Exception('No saved model found in: ' + ckpt_path_gen_1)
+    load_status = gen_1.load_weights(ckpt_path_gen_1)
+    load_status.assert_consumed()
+    print("Gen. Model from " + ckpt_path_gen_1 + " loaded")
+
+    # load gen_2
+    latest_checkpoint_gen_2 = tf.train.latest_checkpoint(ckpt_path_gen_2)
+    # if model must be restored (for inference), there must be a snapshot
+    if not latest_checkpoint_gen_2:
+        raise Exception('No saved model found in: ' + ckpt_path_gen_2)
+    load_status = gen_2.load_weights(ckpt_path_gen_2)
+    load_status.assert_consumed()
+    print("Gen. Model from " + ckpt_path_gen_2 + " loaded")
+
+    # load scrabble_recognizer
+    latest_checkpoint_srec = tf.train.latest_checkpoint(ckpt_path_srec)
+    # if model must be restored (for inference), there must be a snapshot
+    if not latest_checkpoint_srec:
+        raise Exception('No saved model found in: ' + ckpt_path_srec)
+    load_status = scrabble_rec.load_weights(ckpt_path_srec)
+    load_status.assert_consumed()
+    print("Scrabble Rec. Model from " + ckpt_path_srec + " loaded")
+
+    # load my_recognizer
+    latest_checkpoint_myrec = tf.train.latest_checkpoint(ckpt_path_myrec)
+    # if model must be restored (for inference), there must be a snapshot
+    if not latest_checkpoint_myrec:
+        raise Exception('No saved model found in: ' + ckpt_path_myrec)
+    load_status = my_rec.load_weights(ckpt_path_myrec)
+    load_status.assert_consumed()
+    print("My Rec. Model from " + ckpt_path_myrec + " loaded")
+
+    return gen_1, gen_2, scrabble_rec, my_rec
 
 
 def main():
@@ -414,11 +452,9 @@ def main():
 
     # print dataset info
     test_words, test_buckets = dataset_stats(test_dir, bucket_size, char_vec)
-    print(len(test_words))
-    print(len(test_buckets))
 
     total_batch_size = 0
-    # total batch size calculation -> b_size // batch_size for each bucket and +1 if there are still words left
+    # total batch size calculation -> len(bucket) // batch_size for each bucket and +1 if there are still words left
     for bucket in test_buckets:
         b_size = len(bucket)
         total_batch_size += b_size // batch_size
@@ -435,7 +471,8 @@ def main():
     my_rec = make_my_recognizer(in_dim, n_classes + 1, restore=False)
 
     # load pre-trained models (gen_1 -> generator trained with scrabble_rec, gen_2 -> generator trained with my_rec)
-    gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec = load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path)
+    gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec = load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path,
+                                                                      "final60", "final69", "95", "27")
 
     # inference function
     test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec, test_dataset)
