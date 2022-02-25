@@ -125,13 +125,19 @@ def load_test_data(input_dim, batch_size, reading_dir, char_vector, bucket_size)
 
         bucket_length = len(data_buckets[random_bucket_idx][1])
         to_check = bucket_position[random_bucket_idx-1] + batch_size
+        print("chosen bucket: ", random_bucket_idx)
+        print("bucket length: ", bucket_length)
+        print("enough place?: ", to_check)
         # check if bucket has enough elements
         if to_check > bucket_length:
+            print("Not enough place!")
+            print("bucket ", str(random_bucket_idx), " removed")
             # remove the entry from buckets, so that it does not get chosen again
             buckets.remove(random_bucket_idx)
-            # put the remaining words into a smaller batch
+            # new/final batch size to put the remaining words of the bucket into
             if bucket_length - bucket_position[random_bucket_idx-1] < batch_size:
                 final_batch_size = len(data_buckets[random_bucket_idx][0]) - bucket_position[random_bucket_idx-1]
+                print("final batch size: ", final_batch_size)
 
         image_batch = []
         label_batch = []
@@ -155,7 +161,7 @@ def load_test_data(input_dim, batch_size, reading_dir, char_vector, bucket_size)
         yield (image_batch, label_batch)
 
 
-def dataset_stats(test_dir, bucket_size):
+def dataset_stats(test_dir, bucket_size, char_vector):
     # count test sample size and print it
     test_words = return_stats(test_dir, bucket_size)
     print(f'no. test samples: {len(test_words)}\n')
@@ -163,7 +169,19 @@ def dataset_stats(test_dir, bucket_size):
     # write the words into a separate files for future use
     write_words(test_dir, test_words, mode='test')
 
-    return test_words
+    # create new list to contain buckets
+    test_buckets = []
+    for i in range(bucket_size):
+        test_buckets.append([])
+
+    # put test_words in buckets
+    for word in test_words:
+        bucket = len(word)
+
+        if bucket <= bucket_size and word.isalpha():
+            test_buckets[bucket - 1].append([char_vector.index(char) for char in word])
+
+    return test_words, test_buckets
 
 
 def validate_batch(char_vector, labels, time_steps, decoded, wbs):
@@ -355,6 +373,19 @@ def test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec):
     return my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err
 
 
+def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, id1, id2):
+    ckpt_path_gen_1 = ckpt_path + '/generator/' + id1
+    ckpt_path_srec = ckpt_path + '/recognizer/' + id1
+    ckpt_path_gen_2 = ckpt_path + '/generator/' + id2
+    ckpt_path_myrec = ckpt_path + '/generator/' + id2
+
+    print(ckpt_path_gen_1)
+    print(ckpt_path_gen_2)
+    print(ckpt_path_gen_2)
+    print(ckpt_path_myrec)
+
+
+
 def main():
     # init params
     gin.parse_config_file('scrabble_gan.gin')
@@ -379,21 +410,23 @@ def main():
         os.makedirs(gen_path)
 
     # load and preprocess dataset (python generator)
-    test_dataset = load_prepare_data(in_dim, batch_size, test_dir, char_vec, bucket_size)
+    test_dataset = load_test_data(in_dim, batch_size, test_dir, char_vec, bucket_size)
 
     # print dataset info
-    test_words = dataset_stats(test_dir, bucket_size)
+    test_words, test_buckets = dataset_stats(test_dir, bucket_size, char_vec)
+    print(len(test_words))
+    print(len(test_buckets))
 
-    num_batch_elements = len(test_words) // batch_size
+    total_batch_size = 0
+    # total batch size calculation -> b_size // batch_size for each bucket and +1 if there are still words left
+    for bucket in test_buckets:
+        b_size = len(bucket)
+        total_batch_size += b_size // batch_size
+        total_batch_size += 1 if b_size % batch_size != 0 else 0
+
     print("number of test words: ", len(test_words))
     print("batch_size: ", batch_size)
-    print("num_batch_elements: ", num_batch_elements)
-    counter = 0
-    while True:
-        img, label = next(test_dataset)
-        print("label length: ", len(label))
-        print(counter)
-        counter += 1
+    print("num_batch_elements: ", total_batch_size)
 
     # initialize two generators, one scrabbleGAN recognizer and one myRecognizer for testing
     gen_1 = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
@@ -402,7 +435,7 @@ def main():
     my_rec = make_my_recognizer(in_dim, n_classes + 1, restore=False)
 
     # load pre-trained models (gen_1 -> generator trained with scrabble_rec, gen_2 -> generator trained with my_rec)
-    gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec = load_weights(gen_1, gen_2, scrabble_rec, my_rec)
+    gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec = load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path)
 
     # inference function
     test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec, test_dataset)

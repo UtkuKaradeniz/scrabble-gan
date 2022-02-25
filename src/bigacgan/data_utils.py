@@ -15,11 +15,15 @@ from src.bigacgan.net_architecture import ctc_loss
 
 
 def write_words(reading_dir, words, mode):
-    f = open(reading_dir + mode + '-words.txt', 'w', encoding='utf8')
+    f1 = open(reading_dir + mode + '-words.txt', 'w', encoding='utf8')
+    for word in words:
+        f1.write("%s\n" % word)
+    f1.close()
+    f2 = open(reading_dir + mode + '-words_unique.txt', 'w', encoding='utf8')
     no_duplicates = list(dict.fromkeys(words))
     for word in no_duplicates:
-        f.write("%s\n" % word)
-    f.close()
+        f2.write("%s\n" % word)
+    f2.close()
 
 
 def return_stats(reading_dir, bucket_size):
