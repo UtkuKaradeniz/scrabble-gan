@@ -9,6 +9,7 @@ import numpy as np
 import tensorflow as tf
 import cv2
 import matplotlib.pyplot as plt
+import editdistance
 
 from src.bigacgan.arch_ops import spectral_norm
 from src.bigacgan.data_utils import load_prepare_data, train, make_gif, load_random_word_list, return_stats, write_words
@@ -179,14 +180,9 @@ def dataset_stats(test_dir, bucket_size, char_vector):
     return test_words, test_buckets
 
 
-def validate_batch(char_vector, labels, time_steps, decoded, wbs):
+def error_rate_batch(char_vector, labels, decoded):
     num_char_err_vb = 0
-    # num_char_err_wb = 0
     num_char_total = 0
-
-    # wbs_in = tf.transpose(time_steps, perm=[1, 0, 2])
-    # # decode time-steps with WordBeamSearch
-    # label_str = wbs.compute(wbs_in)
 
     char_str_wb, char_str_vb = [], []
 
@@ -194,18 +190,13 @@ def validate_batch(char_vector, labels, time_steps, decoded, wbs):
     decode = [[[int(p) for p in x if p != -1] for x in y] for y in decoded]
     decode = decode[0]
 
-    # convert vanillaBeamSearch vectors to words
+    # convert decoded vanillaBeamSearch vectors to strings
     for text in decode:
-        # vector to chars and chars to words
+        # vector to chars and chars to strings
         char_str_vb.append(''.join([char_vector[label] for label in text]))
 
-    # # convert WordBeamSearch vectors to words
-    # for curr_label_str in label_str:
-    #     char_str_wb.append(''.join([char_vector[label] for label in curr_label_str]))
-    #
-    # assert len(char_str_vb) == len(char_str_wb)
-
     fake_words = []
+    # convert labels to strings
     for vector in labels:
         fake_words.append(''.join([char_vector[label] for label in vector]))
 
@@ -214,30 +205,23 @@ def validate_batch(char_vector, labels, time_steps, decoded, wbs):
         dist_vb = editdistance.eval(char_str_vb[i], fake_words[i])
         num_char_err_vb += dist_vb
 
-        # dist_wb = editdistance.eval(char_str_wb[i], fake_words[i])
-        # num_char_err_wb += dist_wb
-
         num_char_total += len(labels[i])
 
         print('vanillaBeam : [OK]' if dist_vb == 0 else 'vanillaBeam : [ERR:%d]' % dist_vb, '"' +
               fake_words[i] + '"', '->', '"' + char_str_vb[i] + '"')
-        # print('wordBeam : [OK]' if dist_wb == 0 else 'wordBeam : [ERR:%d]' % dist_wb, '"' + fake_words[i]
-        #       + '"', '->', '"' + char_str_wb[i] + '"')
 
     return num_char_err_vb, num_char_total
 
 
-def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, valid1_words, wbs):
+def test_rec(recognizer, char_vec, test_dataset, batch_size, total_batch_size):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
-    num_batch_elements = len(valid1_words) // batch_size
 
     num_char_err_vb = 0
-    num_char_err_wb = 0
     num_char_total = 0
 
-    for i in range(num_batch_elements):
-        image_batch, label_batch = next(valid1_dataset)
+    for i in range(total_batch_size):
+        image_batch, label_batch = next(test_dataset)
         real_labels = label_batch
 
         # calculate time-steps
@@ -250,14 +234,12 @@ def validate_recognizer(recognizer, char_vector, valid1_dataset, batch_size, val
         decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps,
                                                  input_length=input_length, greedy=False, beam_width=50)
 
-        char_err_vb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, -1)
+        char_err_vb, char_total = error_rate_batch(char_vec, label_batch, decoded)
 
         num_char_err_vb += char_err_vb
-        # num_char_err_wb += char_err_wb
         num_char_total += char_total
 
     char_error_rate_vb = num_char_err_vb / num_char_total
-    # char_error_rate_wb = num_char_err_wb / num_char_total
     print(f'Rec. Character error rate (VanillaBeam Search): {char_error_rate_vb * 100.0}%.')
 
     return char_error_rate_vb
@@ -306,54 +288,11 @@ def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch
     return char_error_rate_vb
 
 
-def test(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words):
-    # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
-    """Predict words generated with Generator"""
-    num_batch_elements = len(valid2_words) // batch_size
-
-    num_char_err_vb = 0
-    # num_char_err_wb = 0
-    num_char_total = 0
-
-    for i in range(num_batch_elements):
-        _, label_batch = next(valid2_dataset)
-
-        # generate latent points + take labels form valid2 dataset
-        noise = tf.random.normal([batch_size, latent_dim])
-        fake_labels = label_batch
-
-        # generate fake images
-        generated_imgs = generator([noise, fake_labels], training=False)
-
-        # predict images / calculate time-steps
-        time_steps = recognizer(generated_imgs, training=False)
-
-        sequence_length_fake = len(fake_labels[0])
-        inp_len_fake = -1 + sequence_length_fake * 4
-        input_length = np.asarray([inp_len_fake for _ in range(len(np.asarray(time_steps)))])
-        # decode time-steps with vanillaBeamSearch
-        decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps, input_length=input_length, greedy=False,
-                                                 beam_width=50)
-
-        char_err_vb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, -1)
-
-        num_char_err_vb += char_err_vb
-        # num_char_err_wb += char_err_wb
-        num_char_total += char_total
-
-    # print validation result
-    char_error_rate_vb = num_char_err_vb / num_char_total
-    # char_error_rate_wb = num_char_err_wb / num_char_total
-    print(f'Gen. Character error rate (VanillaBeam Search): {char_error_rate_vb * 100.0}%. ')
-
-    return char_error_rate_vb
-
-
-def test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec):
+def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, total_batch_size, char_vec, batch_size):
     # test my recognizer
-    my_rec_err = test_rec(my_rec, char_vector, valid1_dataset, batch_size, valid1_words)
+    my_rec_err = test_rec(my_rec, char_vec, test_dataset, batch_size, total_batch_size)
     # test scrabble recognizer
-    s_rec_err = test_rec(gen_my_rec, char_vector, valid1_dataset, batch_size, valid1_words)
+    s_rec_err = test_rec(scrabble_rec, char_vec, test_dataset, batch_size, total_batch_size)
 
     # cross-test generators with recognizers
     # generator trained with my recognizer tested with my recognizer
@@ -370,20 +309,20 @@ def test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec):
 
 def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, ep_id1, ep_id2):
     base_ckpt_path = os.path.dirname(os.path.dirname(ckpt_path)) + '/'
-    ckpt_path_gen_1 = base_ckpt_path + ex_id1 + '/generator/' + ep_id1 + '/'
-    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id1 + '/'
-    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id2 + '/'
-    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id2 + '/'
+    ckpt_path_gen_1 = base_ckpt_path + ex_id1 + '/generator/' + ep_id1
+    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id1
+    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id2
+    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id2
 
     print(ckpt_path_gen_1)
     print(ckpt_path_gen_2)
     print(ckpt_path_srec)
     print(ckpt_path_myrec)
     if os.name == 'nt':
-        ckpt_path_gen_1 = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final60\\generator\\95\\'
-        test_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\words-Reading-test\\'
-        raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
-        gen_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\ex30'
+        ckpt_path_gen_1 = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final60\\generator\\95'
+        ckpt_path_srec = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final60\\recognizer\\95'
+        ckpt_path_gen_2 = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final69\\generator\\27'
+        ckpt_path_myrec = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final69\\recognizer\\27'
 
     # load gen_1
     latest_checkpoint_gen_1 = tf.train.latest_checkpoint(ckpt_path_gen_1)
@@ -393,7 +332,6 @@ def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, 
     load_status = gen_1.load_weights(latest_checkpoint_gen_1)
     load_status.assert_consumed()
     print("Gen. Model from " + ckpt_path_gen_1 + " loaded")
-
 
     # load gen_2
     latest_checkpoint_gen_2 = tf.train.latest_checkpoint(ckpt_path_gen_2)
@@ -463,7 +401,7 @@ def main():
 
     print("number of test words: ", len(test_words))
     print("batch_size: ", batch_size)
-    print("num_batch_elements: ", total_batch_size)
+    print("number of batches: ", total_batch_size)
 
     # initialize two generators, one scrabbleGAN recognizer and one myRecognizer for testing
     gen_1 = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
@@ -476,7 +414,7 @@ def main():
                                                                       "final60", "final69", "95", "27")
 
     # inference function
-    test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec, test_dataset)
+    test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec, test_dataset, total_batch_size, char_vec, batch_size)
 
 
 if __name__ == "__main__":
