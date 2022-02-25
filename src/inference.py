@@ -273,7 +273,7 @@ def test_gen(generator, recognizer, char_vector, test_dataset, total_batch_size,
         # generate five different latent points / styles
         fake_labels = label_batch
         for j in range(diff_styles):
-            noise = tf.random.normal([batch_size, latent_dim])
+            noise = tf.random.normal([len(label_batch), latent_dim])
 
             # generate fake images
             generated_imgs = generator([noise, fake_labels], training=False)
@@ -318,13 +318,13 @@ def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, t
     my_gen_my_rec_err = test_gen(gen_w_my_rec, my_rec, char_vec, test_dataset, total_batch_size, batch_size, latent_dim)
     # generator trained with my recognizer tested with scrabbleGAN recognizer
     print("Testing generator trained with my recognizer tested with scrabbleGAN recognizer")
-    my_gen_s_rec_err = test_gen(gen_w_my_rec, scrabble_rec)
+    my_gen_s_rec_err = test_gen(gen_w_my_rec, scrabble_rec, char_vec, test_dataset, total_batch_size, batch_size, latent_dim)
     # generator trained with scarabbleGAN recognizer tested with my recognizer
     print("Testing generator trained with scarabbleGAN recognizer tested with my recognizer")
-    s_gen_my_rec_err = test_gen(gen_w_scrabble_rec, my_rec)
+    s_gen_my_rec_err = test_gen(gen_w_scrabble_rec, my_rec, char_vec, test_dataset, total_batch_size, batch_size, latent_dim)
     # generator trained with scrabbleGAN recognizer tested with scrabbleGAN recognizer
     print("Testing generator trained with scrabbleGAN recognizer tested with scrabbleGAN recognizer")
-    s_gen_s_rec_err = test_gen(gen_w_scrabble_rec, scrabble_rec)
+    s_gen_s_rec_err = test_gen(gen_w_scrabble_rec, scrabble_rec, char_vec, test_dataset, total_batch_size, batch_size, latent_dim)
 
     return my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err
 
