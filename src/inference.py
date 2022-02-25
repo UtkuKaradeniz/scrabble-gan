@@ -225,7 +225,7 @@ def error_rate_batch(char_vector, labels, decoded):
     return num_char_err_vb, num_char_total
 
 
-def test_rec(recognizer, char_vec, test_dataset, batch_size, total_batch_size):
+def test_rec(recognizer, char_vec, test_dataset, total_batch_size):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
 
@@ -257,64 +257,74 @@ def test_rec(recognizer, char_vec, test_dataset, batch_size, total_batch_size):
     return char_error_rate_vb
 
 
-def test_gen(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words):
+def test_gen(generator, recognizer, char_vector, test_dataset, total_batch_size, batch_size, latent_dim, diff_styles=5):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
-    num_batch_elements = len(valid2_words) // batch_size
 
     num_char_err_vb = 0
-    # num_char_err_wb = 0
     num_char_total = 0
 
-    for i in range(num_batch_elements):
-        _, label_batch = next(valid2_dataset)
+    for i in range(total_batch_size):
+        _, label_batch = next(test_dataset)
 
-        # generate latent points + take labels form valid2 dataset
-        noise = tf.random.normal([batch_size, latent_dim])
+        char_err_styles = 0
+        char_total_styles = 0
+
+        # generate five different latent points / styles
         fake_labels = label_batch
+        for j in range(diff_styles):
+            noise = tf.random.normal([batch_size, latent_dim])
 
-        # generate fake images
-        generated_imgs = generator([noise, fake_labels], training=False)
+            # generate fake images
+            generated_imgs = generator([noise, fake_labels], training=False)
 
-        # predict images / calculate time-steps
-        time_steps = recognizer(generated_imgs, training=False)
+            # predict images / calculate time-steps
+            time_steps = recognizer(generated_imgs, training=False)
 
-        sequence_length_fake = len(fake_labels[0])
-        inp_len_fake = -1 + sequence_length_fake * 4
-        input_length = np.asarray([inp_len_fake for _ in range(len(np.asarray(time_steps)))])
-        # decode time-steps with vanillaBeamSearch
-        decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps, input_length=input_length, greedy=False,
-                                                 beam_width=50)
+            sequence_length_fake = len(fake_labels[0])
+            inp_len_fake = -1 + sequence_length_fake * 4
+            input_length = np.asarray([inp_len_fake for _ in range(len(np.asarray(time_steps)))])
+            # decode time-steps with vanillaBeamSearch
+            decoded, _ = tf.keras.backend.ctc_decode(y_pred=time_steps, input_length=input_length, greedy=False,
+                                                     beam_width=50)
 
-        char_err_vb, char_total = validate_batch(char_vector, label_batch, time_steps, decoded, -1)
+            char_err_vb, char_total = error_rate_batch(char_vector, label_batch, decoded)
 
-        num_char_err_vb += char_err_vb
-        # num_char_err_wb += char_err_wb
-        num_char_total += char_total
+            char_err_styles += char_err_vb
+            char_total_styles += char_total
+
+        num_char_err_vb += (char_err_styles / diff_styles)
+        num_char_total += (char_total_styles // diff_styles)
 
     # print validation result
     char_error_rate_vb = num_char_err_vb / num_char_total
-    # char_error_rate_wb = num_char_err_wb / num_char_total
     print(f'Gen. Character error rate (VanillaBeam Search): {char_error_rate_vb * 100.0}%. ')
 
     return char_error_rate_vb
 
 
-def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, total_batch_size, char_vec, batch_size):
+def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, total_batch_size, char_vec, batch_size,
+         latent_dim):
     # test my recognizer
+    print("Testing my Recognizer")
     my_rec_err = test_rec(my_rec, char_vec, test_dataset, batch_size, total_batch_size)
     # test scrabble recognizer
+    print("Testing scrabble Recognizer")
     s_rec_err = test_rec(scrabble_rec, char_vec, test_dataset, batch_size, total_batch_size)
 
     # cross-test generators with recognizers
     # generator trained with my recognizer tested with my recognizer
-    my_gen_my_rec_err = test_gen(gen_my_rec, gen_my_rec, char_vec, test_dataset, batch_size, total_batch_size)
+    print("Testing generator trained with my recognizer tested with my recognizer")
+    my_gen_my_rec_err = test_gen(gen_w_my_rec, my_rec, char_vec, test_dataset, total_batch_size, batch_size, latent_dim)
     # generator trained with my recognizer tested with scrabbleGAN recognizer
-    my_gen_s_rec_err = test_gen(gen_my_rec, scrabble_rec)
+    print("Testing generator trained with my recognizer tested with scrabbleGAN recognizer")
+    my_gen_s_rec_err = test_gen(gen_w_my_rec, scrabble_rec)
     # generator trained with scarabbleGAN recognizer tested with my recognizer
-    s_gen_my_rec_err = test_gen(gen_scrabble_rec, my_rec)
+    print("Testing generator trained with scarabbleGAN recognizer tested with my recognizer")
+    s_gen_my_rec_err = test_gen(gen_w_scrabble_rec, my_rec)
     # generator trained with scrabbleGAN recognizer tested with scrabbleGAN recognizer
-    s_gen_s_rec_err = test_gen(gen_scrabble_rec, scrabble_rec)
+    print("Testing generator trained with scrabbleGAN recognizer tested with scrabbleGAN recognizer")
+    s_gen_s_rec_err = test_gen(gen_w_scrabble_rec, scrabble_rec)
 
     return my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err
 
@@ -375,6 +385,17 @@ def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, 
     return gen_1, gen_2, scrabble_rec, my_rec
 
 
+def write_results_to_csv(my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err,
+                         gen_path):
+    output_dir = os.path.dirname(gen_path)
+    summary = open(output_dir + "test_summary.txt", "w")
+
+    # write headers to files
+    summary.write("my_rec_err; s_rec_err; my_gen_my_rec_err; my_gen_s_rec_err; s_gen_my_rec_err; s_gen_s_rec_err\n")
+    summary.write(str(my_rec_err) + ";" + str(s_rec_err) + ";" + str(my_gen_my_rec_err) + ";" +
+                  str(my_gen_s_rec_err) + ";" + str(s_gen_my_rec_err) + ";" + str(s_gen_s_rec_err) + ";" + '\n')
+
+
 def main():
     # init params
     gin.parse_config_file('scrabble_gan.gin')
@@ -426,7 +447,12 @@ def main():
                                                                       "final60", "final69", "95", "27")
 
     # inference function
-    test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec, test_dataset, total_batch_size, char_vec, batch_size)
+    my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, \
+    s_gen_my_rec_err, s_gen_s_rec_err = test(gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec, test_dataset,
+                                             total_batch_size, char_vec, batch_size, latent_dim)
+
+    write_results_to_csv(my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err,
+                         gen_path)
 
 
 if __name__ == "__main__":
