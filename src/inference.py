@@ -307,10 +307,10 @@ def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, t
          latent_dim):
     # test my recognizer
     print("Testing my Recognizer")
-    my_rec_err = test_rec(my_rec, char_vec, test_dataset, batch_size, total_batch_size)
+    my_rec_err = test_rec(my_rec, char_vec, test_dataset, total_batch_size)
     # test scrabble recognizer
     print("Testing scrabble Recognizer")
-    s_rec_err = test_rec(scrabble_rec, char_vec, test_dataset, batch_size, total_batch_size)
+    s_rec_err = test_rec(scrabble_rec, char_vec, test_dataset, total_batch_size)
 
     # cross-test generators with recognizers
     # generator trained with my recognizer tested with my recognizer
