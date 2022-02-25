@@ -121,6 +121,7 @@ def load_test_data(input_dim, batch_size, reading_dir, char_vector, bucket_size)
         final_batch_size = None
         # if we run out of buckets, refill them
         if len(buckets) == 0:
+            print("buckets empty")
             # reset buckets
             buckets = [i for i in buckets_save]
             # reset bucket positions
@@ -129,6 +130,7 @@ def load_test_data(input_dim, batch_size, reading_dir, char_vector, bucket_size)
             list_buckets = list(data_buckets.items())
             random.shuffle(list_buckets)
             data_buckets = dict(list_buckets)
+            print("buckets refilled")
 
         # select random bucket
         random_bucket_idx = np.random.choice(buckets, 1)
