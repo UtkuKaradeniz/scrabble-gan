@@ -390,16 +390,17 @@ def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, 
     # if model must be restored (for inference), there must be a snapshot
     if not latest_checkpoint_gen_1:
         raise Exception('No saved model found in: ' + ckpt_path_gen_1)
-    load_status = gen_1.load_weights(ckpt_path_gen_1)
+    load_status = gen_1.load_weights(latest_checkpoint_gen_1)
     load_status.assert_consumed()
     print("Gen. Model from " + ckpt_path_gen_1 + " loaded")
+
 
     # load gen_2
     latest_checkpoint_gen_2 = tf.train.latest_checkpoint(ckpt_path_gen_2)
     # if model must be restored (for inference), there must be a snapshot
     if not latest_checkpoint_gen_2:
         raise Exception('No saved model found in: ' + ckpt_path_gen_2)
-    load_status = gen_2.load_weights(ckpt_path_gen_2)
+    load_status = gen_2.load_weights(latest_checkpoint_gen_2)
     load_status.assert_consumed()
     print("Gen. Model from " + ckpt_path_gen_2 + " loaded")
 
@@ -408,7 +409,7 @@ def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, 
     # if model must be restored (for inference), there must be a snapshot
     if not latest_checkpoint_srec:
         raise Exception('No saved model found in: ' + ckpt_path_srec)
-    load_status = scrabble_rec.load_weights(ckpt_path_srec)
+    load_status = scrabble_rec.load_weights(latest_checkpoint_srec)
     load_status.assert_consumed()
     print("Scrabble Rec. Model from " + ckpt_path_srec + " loaded")
 
@@ -417,7 +418,7 @@ def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, 
     # if model must be restored (for inference), there must be a snapshot
     if not latest_checkpoint_myrec:
         raise Exception('No saved model found in: ' + ckpt_path_myrec)
-    load_status = my_rec.load_weights(ckpt_path_myrec)
+    load_status = my_rec.load_weights(latest_checkpoint_myrec)
     load_status.assert_consumed()
     print("My Rec. Model from " + ckpt_path_myrec + " loaded")
 
