@@ -119,6 +119,16 @@ def load_test_data(input_dim, batch_size, reading_dir, char_vector, bucket_size)
     # (2) create python generator
     while True:
         final_batch_size = None
+        # if we run out of buckets, refill them
+        if len(buckets) == 0:
+            # reset buckets
+            buckets = [i for i in buckets_save]
+            # reset bucket positions
+            bucket_position = [j for j in bucket_position_save]
+            # re-shuffle dictionary
+            list_buckets = list(data_buckets.items())
+            random.shuffle(list_buckets)
+            data_buckets = dict(list_buckets)
 
         # select random bucket
         random_bucket_idx = np.random.choice(buckets, 1)
@@ -245,7 +255,7 @@ def test_rec(recognizer, char_vec, test_dataset, batch_size, total_batch_size):
     return char_error_rate_vb
 
 
-def validate_generator(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words):
+def test_gen(generator, recognizer, char_vector, valid2_dataset, batch_size, latent_dim, valid2_words):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
     num_batch_elements = len(valid2_words) // batch_size
@@ -296,7 +306,7 @@ def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, t
 
     # cross-test generators with recognizers
     # generator trained with my recognizer tested with my recognizer
-    my_gen_my_rec_err = test_gen(gen_my_rec, gen_my_rec)
+    my_gen_my_rec_err = test_gen(gen_my_rec, gen_my_rec, char_vec, test_dataset, batch_size, total_batch_size)
     # generator trained with my recognizer tested with scrabbleGAN recognizer
     my_gen_s_rec_err = test_gen(gen_my_rec, scrabble_rec)
     # generator trained with scarabbleGAN recognizer tested with my recognizer
