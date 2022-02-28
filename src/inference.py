@@ -257,7 +257,7 @@ def test_rec(recognizer, char_vec, test_dataset, total_batch_size):
     return char_error_rate_vb
 
 
-def test_gen(generator, recognizer, char_vector, test_dataset, total_batch_size, batch_size, latent_dim, diff_styles=5):
+def test_gen(generator, recognizer, char_vector, test_dataset, total_batch_size, batch_size, latent_dim, diff_styles=10):
     # https://github.com/arthurflor23/handwritten-text-recognition/blob/8d9fcd4b4a84e525ba3b985b80954e2170066ae2/src/network/model.py#L435
     """Predict words generated with Generator"""
 
@@ -329,17 +329,13 @@ def test(gen_w_scrabble_rec, gen_w_my_rec, scrabble_rec, my_rec, test_dataset, t
     return my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, s_gen_my_rec_err, s_gen_s_rec_err
 
 
-def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, ep_id1, ep_id2):
+def load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path, ex_id1, ex_id2, ep_id1, ep_id2, ep_id3, ep_id4):
     base_ckpt_path = os.path.dirname(os.path.dirname(ckpt_path)) + '/'
     ckpt_path_gen_1 = base_ckpt_path + ex_id1 + '/generator/' + ep_id1
-    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id1
-    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id2
-    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id2
+    ckpt_path_srec = base_ckpt_path + ex_id1 + '/recognizer/' + ep_id2
+    ckpt_path_gen_2 = base_ckpt_path + ex_id2 + '/generator/' + ep_id3
+    ckpt_path_myrec = base_ckpt_path + ex_id2 + '/recognizer/' + ep_id4
 
-    print(ckpt_path_gen_1)
-    print(ckpt_path_gen_2)
-    print(ckpt_path_srec)
-    print(ckpt_path_myrec)
     if os.name == 'nt':
         ckpt_path_gen_1 = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final60\\generator\\95'
         ckpt_path_srec = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\scrabble-gan-checkpoints\\final60\\recognizer\\95'
@@ -444,7 +440,7 @@ def main():
 
     # load pre-trained models (gen_1 -> generator trained with scrabble_rec, gen_2 -> generator trained with my_rec)
     gen_scrabble_rec, gen_my_rec, scrabble_rec, my_rec = load_weights(gen_1, gen_2, scrabble_rec, my_rec, ckpt_path,
-                                                                      "final60", "final69", "95", "27")
+                                                                      "final60", "final69", "24", "35", "23", "28")
 
     # inference function
     my_rec_err, s_rec_err, my_gen_my_rec_err, my_gen_s_rec_err, \
