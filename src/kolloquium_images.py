@@ -412,19 +412,24 @@ def load_generator(gen, ckpt_path, ex_id, ep_id):
     return gen
 
 
-def generate_images(gen, words, latent_dim, diff_styles, name):
-    images = []
-    for j in range(diff_styles):
-        noise = tf.random.normal([len(words), latent_dim])
+def generate_images(gen, char_vector, words, latent_dim, save_path, diff_styles, name):
+    if os.name == 'nt':
+        save_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\kolloquium'
 
-        # generate fake images
-        generated_imgs = gen([noise, words], training=False)
-        # scaling change: (-1, 1) -> (0, 1)
-        generated_imgs = (generated_imgs + 1) / 2.0
+    for word in words:
+        enc_word = [[char_vector.index(char) for char in word]]
+        enc_word = np.array(enc_word).astype(np.int32)
 
-        images.append(generated_imgs)
+        for j in range(diff_styles):
+            noise = tf.random.normal([1, latent_dim])
 
-    print(images)
+            # generate fake images
+            generated_img = gen([noise, enc_word], training=False)
+            # scaling change: (-1, 1) -> (0, 2) -> (0, 255)
+            generated_img = (generated_img + 1) * 125.5
+
+            img_name = name + "_" + word + "_" + str(j) + ".png"
+            cv2.imwrite(os.path.join(save_path, img_name), np.float32(generated_img[0, :, :, :]))
 
 
 def main():
@@ -441,10 +446,12 @@ def main():
         raw_dir = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\IAM_mygan\\img'
         gen_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\ex30'
 
+    save_path = '/scrabble-gan/data/output/kollo/'
+
     gen = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
     gen = load_generator(gen, ckpt_path, ex_id="final60", ep_id="24")
     words = ["protectively", "mysteries", "Gave", "breaths", "glorious", "transcendent", "Mind", "Kingdom"]
-    generate_images(gen, words, latent_dim, diff_styles=10, name="sc_vanilla")
+    generate_images(gen, char_vec, words, latent_dim, save_path, diff_styles=10, name="sc_vanilla")
     exit(-1)
     test_dir = read_dir + '-' + 'test' + '/'
     # convert test dataset to GAN format
