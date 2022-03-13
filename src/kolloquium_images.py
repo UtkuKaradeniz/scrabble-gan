@@ -416,12 +416,12 @@ def generate_images(gen, char_vector, words, latent_dim, save_path, diff_styles,
     if os.name == 'nt':
         save_path = 'C:\\Users\\tuk\\Documents\\Uni-Due\\Bachelorarbeit\\dir_working\\scrabble-gan\\data\\output\\kolloquium'
 
-    for word in words:
-        enc_word = [[char_vector.index(char) for char in word]]
-        enc_word = np.array(enc_word).astype(np.int32)
+    for j in range(diff_styles):
+        noise = tf.random.normal([1, latent_dim])
 
-        for j in range(diff_styles):
-            noise = tf.random.normal([1, latent_dim])
+        for word in words:
+            enc_word = [[char_vector.index(char) for char in word]]
+            enc_word = np.array(enc_word).astype(np.int32)
 
             # generate fake images
             generated_img = gen([noise, enc_word], training=False)
