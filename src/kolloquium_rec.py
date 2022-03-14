@@ -231,7 +231,8 @@ def train(train_dataset, valid1_dataset, valid1_words, recognizer, checkpoint, r
 
     # training loop
     print('training...')
-    for epoch_idx in range(epochs):
+    epoch_idx = 0
+    while True:
         start = time.time()
 
         # variables for total of losses
