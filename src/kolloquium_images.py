@@ -450,7 +450,8 @@ def main():
 
     gen = make_generator(latent_dim, in_dim, embed_y, kernel_reg, g_bw_attention, n_classes)
     gen = load_generator(gen, ckpt_path, ex_id="final60", ep_id="24")
-    words = ["protectively", "mysteries", "Gave", "breaths", "glorious", "transcendent", "Mind", "Kingdom"]
+    # words = ["protectively", "mysteries", "Gave", "breaths", "glorious", "transcendent", "Mind", "Kingdom"]
+    words = ["Arnold", "between", "the", "later", "helped", "NOT", "in", "ten", "Trunk", "stood"]
     generate_images(gen, char_vec, words, latent_dim, save_path, diff_styles=10, name="sc_vanilla")
     exit(-1)
     test_dir = read_dir + '-' + 'test' + '/'
