@@ -16,7 +16,7 @@ setup_optimizer.rmsprop=0                       #0      #1
 
 # Shared specs (G and D)
 shared_specs.epochs = 5
-shared_specs.batch_size = 16
+shared_specs.batch_size = 128
 shared_specs.latent_dim = 128
 shared_specs.embed_y = (32, 8192)
 shared_specs.num_style = 10
@@ -28,7 +28,7 @@ shared_specs.my_rec=0                           #1
 shared_specs.my_disc=0                          #1
 
 # I/O and data structure
-io.ex_id = 'test1/'
+io.ex_id = 'r_sc_1/'
 io.base_path = '/scrabble-gan/'
 io.checkpoint_dir = 'data/scrabble-gan-checkpoints/'
 io.gen_imgs_dir = 'data/output/'
